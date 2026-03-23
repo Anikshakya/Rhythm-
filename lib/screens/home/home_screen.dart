@@ -2,6 +2,7 @@ import 'package:dhun/widgets/fullscreen_player.dart';
 import 'package:dhun/widgets/miniplayer.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 
 import '../library/library_screen.dart';
 
@@ -30,13 +31,7 @@ class _HomeScreenState extends State<HomeScreen> {
   // }
 
   void _navigateToPlayer() {
-   Navigator.push(
-      context,
-      CupertinoPageRoute(
-        fullscreenDialog: true,
-        builder: (context) => const FullScreenPlayer(),
-      ),
-    );
+    Get.to(()=>FullScreenPlayer(), transition: Transition.cupertinoDialog);
     // setState(() {
     //   _selectedIndex = 1;
     // });

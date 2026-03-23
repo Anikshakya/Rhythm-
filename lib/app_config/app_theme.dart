@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 
 class AppTheme {
+  // Prevent instantiation
+  AppTheme._();
+  
   static const Color gold = Color(0xFFD4AF37);
   static const Color darkBackground = Color(0xFF121212);
   static const Color cardColor = Color(0xFF1E1E1E);

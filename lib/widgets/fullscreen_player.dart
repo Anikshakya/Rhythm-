@@ -16,16 +16,13 @@ class FullScreenPlayer extends StatefulWidget {
 class _FullScreenPlayerState extends State<FullScreenPlayer> {
   final OnAudioQuery _audioQuery = OnAudioQuery();
   Uint8List? _albumArt;
-  
-  // Track the media item to listen for external changes (like notifications)
+
   @override
   void initState() {
     super.initState();
     _listenToMediaItemChanges();
   }
 
-  // CRITICAL FIX: Listen to the mediaItem stream so artwork updates 
-  // even if the song is skipped from the notification bar.
   void _listenToMediaItemChanges() {
     audioHandler.mediaItem.listen((item) {
       if (item != null) {
@@ -43,8 +40,11 @@ class _FullScreenPlayerState extends State<FullScreenPlayer> {
     if (mounted) setState(() => _albumArt = art);
   }
 
-  // --- Queue Bottom Sheet ---
+  // --- Queue Bottom Sheet (Adaptive) ---
   void _showQueueSheet(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -57,9 +57,10 @@ class _FullScreenPlayerState extends State<FullScreenPlayer> {
             child: Container(
               height: MediaQuery.of(context).size.height * 0.75,
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.1),
+                // Adaptive background tint
+                color: colorScheme.surface.withValues(alpha: 0.7),
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
-                border: Border.all(color: Colors.white10),
+                border: Border.all(color: colorScheme.onSurface.withValues(alpha: 0.1)),
               ),
               child: Column(
                 children: [
@@ -67,11 +68,20 @@ class _FullScreenPlayerState extends State<FullScreenPlayer> {
                     margin: const EdgeInsets.symmetric(vertical: 12),
                     width: 36,
                     height: 5,
-                    decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(10)),
+                    decoration: BoxDecoration(
+                      color: colorScheme.onSurface.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
-                  const Padding(
-                    padding: EdgeInsets.all(24),
-                    child: Text("Playing Next", style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+                  Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Text(
+                      "Playing Next",
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: colorScheme.onSurface,
+                      ),
+                    ),
                   ),
                   Expanded(
                     child: StreamBuilder<List<MediaItem>>(
@@ -81,31 +91,42 @@ class _FullScreenPlayerState extends State<FullScreenPlayer> {
                         return ListView.separated(
                           padding: const EdgeInsets.only(bottom: 40),
                           itemCount: queue.length,
-                          separatorBuilder: (_, __) => const Divider(color: Colors.white10, indent: 70),
+                          separatorBuilder: (_, __) => Divider(
+                            color: colorScheme.onSurface.withValues(alpha: 0.05),
+                            indent: 70,
+                          ),
                           itemBuilder: (context, index) {
                             final item = queue[index];
                             final isCurrent = item.id == audioHandler.mediaItem.value?.id;
                             return ListTile(
                               contentPadding: const EdgeInsets.symmetric(horizontal: 24),
                               leading: ClipRRect(
-                                borderRadius: BorderRadius.circular(6),
+                                borderRadius: BorderRadius.circular(8),
                                 child: Container(
                                   width: 48,
                                   height: 48,
-                                  color: Colors.white10,
-                                  child: const Icon(CupertinoIcons.music_note, color: Colors.white30),
+                                  color: colorScheme.onSurface.withValues(alpha: 0.1),
+                                  child: Icon(
+                                    CupertinoIcons.music_note,
+                                    color: colorScheme.onSurface.withValues(alpha: 0.4),
+                                  ),
                                 ),
                               ),
                               title: Text(
                                 item.title,
                                 style: TextStyle(
-                                  color: isCurrent ? Colors.white : Colors.white70,
+                                  color: isCurrent ? colorScheme.primary : colorScheme.onSurface,
                                   fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
                                 ),
                                 maxLines: 1,
                               ),
-                              subtitle: Text(item.artist ?? '', style: const TextStyle(color: Colors.white38)),
-                              trailing: isCurrent ? const Icon(CupertinoIcons.speaker_3_fill, color: Colors.white, size: 18) : null,
+                              subtitle: Text(
+                                item.artist ?? 'Unknown Artist',
+                                style: TextStyle(color: colorScheme.onSurface.withValues(alpha: 0.5)),
+                              ),
+                              trailing: isCurrent 
+                                ? Icon(CupertinoIcons.speaker_3_fill, color: colorScheme.primary, size: 18) 
+                                : null,
                               onTap: () {
                                 audioHandler.skipToQueueItem(index);
                                 Navigator.pop(context);
@@ -127,6 +148,10 @@ class _FullScreenPlayerState extends State<FullScreenPlayer> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
       body: StreamBuilder<MediaItem?>(
         stream: audioHandler.mediaItem,
@@ -136,17 +161,25 @@ class _FullScreenPlayerState extends State<FullScreenPlayer> {
 
           return Stack(
             children: [
-              // Background Blur
+              // Background Artwork
               Positioned.fill(
                 child: Container(
-                  color: Colors.black,
-                  child: _albumArt != null ? Image.memory(_albumArt!, fit: BoxFit.cover) : null,
+                  color: colorScheme.surface,
+                  child: _albumArt != null 
+                      ? Image.memory(_albumArt!, fit: BoxFit.cover) 
+                      : null,
                 ),
               ),
+              
+              // Adaptive Blur Overlay
               Positioned.fill(
                 child: BackdropFilter(
                   filter: ImageFilter.blur(sigmaX: 60, sigmaY: 60),
-                  child: Container(color: Colors.black.withValues(alpha: 0.45)),
+                  child: Container(
+                    color: isDark 
+                        ? Colors.black.withValues(alpha: 0.5) 
+                        : colorScheme.surface.withValues(alpha: 0.7),
+                  ),
                 ),
               ),
 
@@ -160,12 +193,18 @@ class _FullScreenPlayerState extends State<FullScreenPlayer> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           IconButton(
-                            icon: const Icon(CupertinoIcons.chevron_down, color: Colors.white70),
+                            icon: Icon(CupertinoIcons.chevron_down, color: colorScheme.onSurface),
                             onPressed: () => Navigator.pop(context),
                           ),
-                          const Text("Now Playing", style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                          Text(
+                            "Now Playing",
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              color: colorScheme.onSurface,
+                            ),
+                          ),
                           IconButton(
-                            icon: const Icon(CupertinoIcons.list_bullet, color: Colors.white70),
+                            icon: Icon(CupertinoIcons.list_bullet, color: colorScheme.onSurface),
                             onPressed: () => _showQueueSheet(context),
                           ),
                         ],
@@ -180,27 +219,30 @@ class _FullScreenPlayerState extends State<FullScreenPlayer> {
                       builder: (context, snapshot) {
                         final isPlaying = snapshot.data?.playing ?? false;
                         return AnimatedScale(
-                          scale: isPlaying ? 1.0 : 0.85,
+                          scale: isPlaying ? 1.0 : 0.82,
                           duration: const Duration(milliseconds: 600),
                           curve: Curves.easeOutBack,
                           child: Container(
-                            width: MediaQuery.of(context).size.width * 0.85,
-                            height: MediaQuery.of(context).size.width * 0.85,
+                            width: MediaQuery.of(context).size.width * 0.82,
+                            height: MediaQuery.of(context).size.width * 0.82,
                             decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(20),
+                              borderRadius: BorderRadius.circular(28),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.4),
+                                  color: Colors.black.withValues(alpha: 0.3),
                                   blurRadius: 40,
                                   offset: const Offset(0, 20),
                                 )
                               ],
                             ),
                             child: ClipRRect(
-                              borderRadius: BorderRadius.circular(20),
+                              borderRadius: BorderRadius.circular(28),
                               child: _albumArt != null
                                   ? Image.memory(_albumArt!, fit: BoxFit.cover)
-                                  : Container(color: Colors.white10, child: const Icon(Icons.music_note, size: 100, color: Colors.white24)),
+                                  : Container(
+                                      color: colorScheme.onSurface.withValues(alpha: 0.1),
+                                      child: Icon(Icons.music_note, size: 100, color: colorScheme.onSurface.withValues(alpha: 0.2)),
+                                    ),
                             ),
                           ),
                         );
@@ -209,7 +251,7 @@ class _FullScreenPlayerState extends State<FullScreenPlayer> {
 
                     const Spacer(),
 
-                    // Song Title & Artist
+                    // Song Info
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 32),
                       child: Row(
@@ -218,19 +260,32 @@ class _FullScreenPlayerState extends State<FullScreenPlayer> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(mediaItem.title, style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold), maxLines: 1),
-                                Text(mediaItem.artist ?? 'Unknown Artist', style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 18)),
+                                Text(
+                                  mediaItem.title,
+                                  style: theme.textTheme.headlineSmall?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: colorScheme.onSurface,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                Text(
+                                  mediaItem.artist ?? 'Unknown Artist',
+                                  style: theme.textTheme.titleMedium?.copyWith(
+                                    color: colorScheme.onSurface.withValues(alpha: 0.6),
+                                  ),
+                                ),
                               ],
                             ),
                           ),
-                          const Icon(CupertinoIcons.heart, color: Colors.white70),
+                          Icon(CupertinoIcons.heart, color: colorScheme.onSurface.withValues(alpha: 0.7)),
                         ],
                       ),
                     ),
 
-                    _buildSlider(mediaItem),
-                    _buildControls(),
-                    _buildExtraControls(), // Repeat and Shuffle row
+                    _buildSlider(mediaItem, colorScheme),
+                    _buildControls(colorScheme),
+                    _buildExtraControls(colorScheme),
 
                     const SizedBox(height: 40),
                   ],
@@ -243,7 +298,7 @@ class _FullScreenPlayerState extends State<FullScreenPlayer> {
     );
   }
 
-  Widget _buildSlider(MediaItem item) {
+  Widget _buildSlider(MediaItem item, ColorScheme colorScheme) {
     return StreamBuilder<Duration>(
       stream: (audioHandler as AudioPlayerHandler).positionStream,
       builder: (context, snapshot) {
@@ -256,9 +311,9 @@ class _FullScreenPlayerState extends State<FullScreenPlayer> {
               SliderTheme(
                 data: SliderTheme.of(context).copyWith(
                   trackHeight: 6,
-                  thumbColor: Colors.white,
-                  activeTrackColor: Colors.white,
-                  inactiveTrackColor: Colors.white.withValues(alpha: 0.15),
+                  thumbColor: colorScheme.onSurface,
+                  activeTrackColor: colorScheme.onSurface,
+                  inactiveTrackColor: colorScheme.onSurface.withValues(alpha: 0.1),
                   thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 0),
                 ),
                 child: Slider(
@@ -268,12 +323,12 @@ class _FullScreenPlayerState extends State<FullScreenPlayer> {
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 24),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(_formatDuration(pos), style: const TextStyle(color: Colors.white38, fontSize: 12)),
-                    Text(_formatDuration(total), style: const TextStyle(color: Colors.white38, fontSize: 12)),
+                    Text(_formatDuration(pos), style: TextStyle(color: colorScheme.onSurface.withValues(alpha: 0.5), fontSize: 12)),
+                    Text(_formatDuration(total), style: TextStyle(color: colorScheme.onSurface.withValues(alpha: 0.5), fontSize: 12)),
                   ],
                 ),
               )
@@ -284,7 +339,7 @@ class _FullScreenPlayerState extends State<FullScreenPlayer> {
     );
   }
 
-  Widget _buildControls() {
+  Widget _buildControls(ColorScheme colorScheme) {
     return StreamBuilder<PlaybackState>(
       stream: audioHandler.playbackState,
       builder: (context, snapshot) {
@@ -292,16 +347,21 @@ class _FullScreenPlayerState extends State<FullScreenPlayer> {
         return Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
-            IconButton(
-              icon: const Icon(CupertinoIcons.backward_fill, color: Colors.white, size: 40),
+            CupertinoButton(
+              child: Icon(CupertinoIcons.backward_fill, color: colorScheme.onSurface, size: 35),
               onPressed: () => audioHandler.skipToPrevious(),
             ),
-            IconButton(
-              icon: Icon(playing ? CupertinoIcons.pause_fill : CupertinoIcons.play_fill, color: Colors.white, size: 75),
+            CupertinoButton(
+              padding: EdgeInsets.zero,
               onPressed: playing ? audioHandler.pause : audioHandler.play,
+              child: Icon(
+                playing ? CupertinoIcons.pause_fill : CupertinoIcons.play_fill, 
+                color: colorScheme.onSurface, 
+                size: 70
+              ),
             ),
-            IconButton(
-              icon: const Icon(CupertinoIcons.forward_fill, color: Colors.white, size: 40),
+            CupertinoButton(
+              child: Icon(CupertinoIcons.forward_fill, color: colorScheme.onSurface, size: 35),
               onPressed: () => audioHandler.skipToNext(),
             ),
           ],
@@ -310,7 +370,7 @@ class _FullScreenPlayerState extends State<FullScreenPlayer> {
     );
   }
 
-  Widget _buildExtraControls() {
+  Widget _buildExtraControls(ColorScheme colorScheme) {
     return StreamBuilder<PlaybackState>(
       stream: audioHandler.playbackState,
       builder: (context, snapshot) {
@@ -319,43 +379,32 @@ class _FullScreenPlayerState extends State<FullScreenPlayer> {
         final shuffleEnabled = state?.shuffleMode == AudioServiceShuffleMode.all;
 
         return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 20),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              // Shuffle Button
               IconButton(
                 icon: Icon(
-                  shuffleEnabled ? CupertinoIcons.shuffle : CupertinoIcons.shuffle,
-                  color: shuffleEnabled ? Colors.white : Colors.white24,
-                  size: 22,
+                  CupertinoIcons.shuffle,
+                  color: shuffleEnabled ? colorScheme.primary : colorScheme.onSurface.withValues(alpha: 0.3),
+                  size: 24,
                 ),
-                onPressed: () {
-                  audioHandler.setShuffleMode(
-                    shuffleEnabled ? AudioServiceShuffleMode.none : AudioServiceShuffleMode.all,
-                  );
-                },
+                onPressed: () => audioHandler.setShuffleMode(
+                  shuffleEnabled ? AudioServiceShuffleMode.none : AudioServiceShuffleMode.all,
+                ),
               ),
-
-              // Repeat Button
               IconButton(
                 icon: Icon(
-                  repeatMode == AudioServiceRepeatMode.one 
-                      ? CupertinoIcons.repeat_1 
-                      : CupertinoIcons.repeat,
-                  color: repeatMode == AudioServiceRepeatMode.none ? Colors.white24 : Colors.white,
-                  size: 22,
+                  repeatMode == AudioServiceRepeatMode.one ? CupertinoIcons.repeat_1 : CupertinoIcons.repeat,
+                  color: repeatMode == AudioServiceRepeatMode.none 
+                      ? colorScheme.onSurface.withValues(alpha: 0.3) 
+                      : colorScheme.primary,
+                  size: 24,
                 ),
                 onPressed: () {
-                  AudioServiceRepeatMode nextMode;
-                  if (repeatMode == AudioServiceRepeatMode.none) {
-                    nextMode = AudioServiceRepeatMode.all;
-                  } else if (repeatMode == AudioServiceRepeatMode.all) {
-                    nextMode = AudioServiceRepeatMode.one;
-                  } else {
-                    nextMode = AudioServiceRepeatMode.none;
-                  }
-                  audioHandler.setRepeatMode(nextMode);
+                  final modes = [AudioServiceRepeatMode.none, AudioServiceRepeatMode.all, AudioServiceRepeatMode.one];
+                  final nextIndex = (modes.indexOf(repeatMode) + 1) % modes.length;
+                  audioHandler.setRepeatMode(modes[nextIndex]);
                 },
               ),
             ],

@@ -1,5 +1,7 @@
+import 'package:dhun/controllers/theme_controller.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 
 import 'tabs/songs_tab.dart';
 import 'tabs/albums_tab.dart';
@@ -19,6 +21,8 @@ class LibraryScreen extends StatefulWidget {
 }
 
 class _LibraryScreenState extends State<LibraryScreen> {
+  final themeController = Get.find<ThemeController>();
+  
   int _segmentedControlValue = 0;
 
   @override
@@ -51,6 +55,26 @@ class _LibraryScreenState extends State<LibraryScreen> {
                           color: theme.textTheme.titleLarge?.color,
                         ),
                       ),
+                      Obx(() {
+                        // Decide icon based on current theme
+                        IconData icon;
+                        switch (themeController.themeMode.value) {
+                          case ThemeMode.light:
+                            icon = CupertinoIcons.sun_max_fill;
+                            break;
+                          case ThemeMode.dark:
+                            icon = CupertinoIcons.moon_fill;
+                            break;
+                          default:
+                            icon = CupertinoIcons.circle_lefthalf_fill; // system
+                        }
+
+                        return IconButton(
+                          icon: Icon(icon, size: 28),
+                          onPressed: () => themeController.toggleTheme(),
+                          tooltip: 'Toggle Theme',
+                        );
+                      })
                     ],
                   ),
 
