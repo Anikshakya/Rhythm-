@@ -2,6 +2,7 @@ import 'package:audio_service/audio_service.dart';
 import 'package:dhun/widgets/fullscreen_player.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:on_audio_query/on_audio_query.dart';
 import '../../core/services/audio_handler.dart';
 
@@ -47,13 +48,7 @@ class SongTile extends StatelessWidget {
                 highlightColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05),
                 onTap: () {
                   if (isPlaying) {
-                    Navigator.push(
-                      context,
-                      CupertinoPageRoute(
-                        fullscreenDialog: true,
-                        builder: (context) => const FullScreenPlayer(),
-                      ),
-                    );
+                    Get.to(()=> const FullScreenPlayer(), transition: Transition.downToUp);
                   } else {
                     onTap?.call();
                   }
