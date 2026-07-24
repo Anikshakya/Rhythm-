@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'dart:math';
-import 'package:flutter/material.dart'; // Added for Color
 import 'package:audio_service/audio_service.dart';
+import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
-import 'package:on_audio_query/on_audio_query.dart';
-import '../models/playlist_model.dart';
+import 'package:rxdart/rxdart.dart';
+import '../database/db_helper.dart';
+import '../models/song_model.dart';
 
 late final AudioHandler audioHandler;
 bool _isInitialized = false;
@@ -11,26 +13,9 @@ bool _isInitialized = false;
 Future<void> initAudioService() async {
   if (_isInitialized) return;
 
-  final OnAudioQuery audioQuery = OnAudioQuery();
-
   try {
-    // 1️⃣ Check current permission
-    bool hasPermission = await audioQuery.permissionsStatus();
-
-    // 2️⃣ Request permission if not granted
-    if (!hasPermission) {
-      hasPermission = await audioQuery.permissionsRequest();
-    }
-
-    // 3️⃣ Stop initialization if permission denied
-    if (!hasPermission) {
-      debugPrint('❌ Audio permission denied');
-      return;
-    }
-
-    // 4️⃣ Initialize AudioService
     audioHandler = await AudioService.init(
-      builder: () => AudioPlayerHandler(),
+      builder: () => RhythmAudioHandler(),
       config: const AudioServiceConfig(
         androidNotificationChannelId: 'aniklinkin.np.dhun.channel.audio',
         androidNotificationChannelName: 'Rhythm Player',
@@ -40,10 +25,8 @@ Future<void> initAudioService() async {
         androidNotificationIcon: 'drawable/ic_launcher',
       ),
     );
-
     _isInitialized = true;
-
-    debugPrint('✅ AudioService initialized successfully');
+    debugPrint('✅ RhythmAudioHandler initialized successfully');
   } catch (e, stack) {
     debugPrint('❌ AudioService init error: $e');
     debugPrint(stack.toString());
@@ -52,19 +35,55 @@ Future<void> initAudioService() async {
 
 bool isAudioServiceInitialized() => _isInitialized;
 
-class AudioPlayerHandler extends BaseAudioHandler {
+class RhythmAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   final AudioPlayer _player = AudioPlayer();
-  final Random _random = Random();
+  final ConcatenatingAudioSource _playlist = ConcatenatingAudioSource(children: []);
+  final List<Song> _rawQueue = [];
 
-  final List<dynamic> _queue = [];
-  int _currentIndex = 0;
+  Timer? _sleepTimer;
+  final _sleepTimerSubject = BehaviorSubject<Duration?>.seeded(null);
+  Stream<Duration?> get sleepTimerStream => _sleepTimerSubject.stream;
 
-  bool _shuffleEnabled = false;
-  AudioServiceRepeatMode _repeatMode = AudioServiceRepeatMode.none;
+  final _currentSongSubject = BehaviorSubject<Song?>.seeded(null);
+  Stream<Song?> get currentSongStream => _currentSongSubject.stream;
 
   Stream<Duration> get positionStream => _player.positionStream;
+  Stream<Duration?> get durationStream => _player.durationStream;
+  Stream<double> get speedStream => _player.speedStream;
 
-  // Notification controls
+  RhythmAudioHandler() {
+    _initPlayer();
+  }
+
+  void _initPlayer() async {
+    try {
+      await _player.setAudioSource(_playlist);
+    } catch (e) {
+      debugPrint("Error setting initial audio source: $e");
+    }
+
+    _player.playerStateStream.listen((playerState) {
+      _broadcastState(playerState);
+    });
+
+    _player.currentIndexStream.listen((index) {
+      if (index != null && index >= 0 && index < _rawQueue.length) {
+        final currentSong = _rawQueue[index];
+        _currentSongSubject.add(currentSong);
+        mediaItem.add(currentSong.toMediaItem());
+        DatabaseHelper.instance.recordPlay(currentSong);
+        _persistSession();
+      } else {
+        _currentSongSubject.add(null);
+        mediaItem.add(null);
+      }
+    });
+
+    _player.positionStream.listen((pos) {
+      playbackState.add(playbackState.value.copyWith(updatePosition: pos));
+    });
+  }
+
   static const MediaControl shuffleControl = MediaControl(
     androidIcon: 'drawable/ic_shuffle',
     label: 'Shuffle',
@@ -77,30 +96,16 @@ class AudioPlayerHandler extends BaseAudioHandler {
     action: MediaAction.setRepeatMode,
   );
 
-  AudioPlayerHandler() {
-    _player.playerStateStream.listen(_updatePlaybackState);
-    _player.positionStream.listen(_broadcastPosition);
-    _player.processingStateStream.listen((state) {
-      if (state == ProcessingState.completed) _handleSongCompletion();
-    });
-  }
-
-  // NEW: This triggers when the user swipes the app away from recent tasks
-  @override
-  Future<void> onTaskRemoved() async {
-    await stop();
-    return super.onTaskRemoved();
-  }
-
-  void _updatePlaybackState(PlayerState state) {
-    final position = _player.position;
+  void _broadcastState(PlayerState playerState) {
+    final playing = playerState.playing;
+    final processingState = playerState.processingState;
 
     playbackState.add(
-      PlaybackState(
+      playbackState.value.copyWith(
         controls: [
           shuffleControl,
           MediaControl.skipToPrevious,
-          if (state.playing) MediaControl.pause else MediaControl.play,
+          if (playing) MediaControl.pause else MediaControl.play,
           MediaControl.skipToNext,
           repeatControl,
         ],
@@ -112,170 +117,99 @@ class AudioPlayerHandler extends BaseAudioHandler {
           MediaAction.setRepeatMode,
           MediaAction.stop,
         },
-        playing: state.playing,
-        processingState: _mapState(state.processingState),
-        repeatMode: _repeatMode,
-        shuffleMode: _shuffleEnabled
-            ? AudioServiceShuffleMode.all
-            : AudioServiceShuffleMode.none,
-        updatePosition: position,
+        playing: playing,
+        processingState: _mapProcessingState(processingState),
+        updatePosition: _player.position,
         bufferedPosition: _player.bufferedPosition,
         speed: _player.speed,
       ),
     );
   }
 
-  void _broadcastPosition(Duration position) {
-    playbackState.add(
-      playbackState.value.copyWith(
-        updatePosition: position,
-        bufferedPosition: _player.bufferedPosition,
-      ),
-    );
-  }
-
-  Future<void> playSong(dynamic song) async {
-    try {
-      String path;
-      String title;
-      String artist;
-      String album = '';
-      int? durationMs;
-      String id;
-      Uri? artUri;
-
-      if (song is SongModel) {
-        path = song.data;
-        title = song.title;
-        artist = song.artist ?? 'Unknown Artist';
-        album = song.album ?? '';
-        durationMs = song.duration;
-        id = song.id.toString();
-        artUri = Uri.parse("content://media/external/audio/albumart/${song.albumId}");
-      } else if (song is PlaylistSong) {
-        path = song.data;
-        title = song.title;
-        artist = song.artist;
-        durationMs = song.duration;
-        id = song.id.toString();
-      } else {
-        throw Exception('Unsupported song type');
-      }
-
-      mediaItem.add(
-        MediaItem(
-          id: id,
-          title: title,
-          artist: artist,
-          album: album,
-          duration: Duration(milliseconds: durationMs ?? 0),
-          artUri: artUri,
-        ),
-      );
-
-      await _player.setFilePath(path);
-      await _player.play();
-    } catch (e) {
-      debugPrint('❌ Error playing song: $e');
+  AudioProcessingState _mapProcessingState(ProcessingState state) {
+    switch (state) {
+      case ProcessingState.idle:
+        return AudioProcessingState.idle;
+      case ProcessingState.loading:
+        return AudioProcessingState.loading;
+      case ProcessingState.buffering:
+        return AudioProcessingState.buffering;
+      case ProcessingState.ready:
+        return AudioProcessingState.ready;
+      case ProcessingState.completed:
+        return AudioProcessingState.completed;
     }
   }
 
-  /// ================= Queue Management =================
-  
-  void setQueue(List<dynamic> songs) {
-    _queue.clear();
-    _queue.addAll(songs);
+  // ================= UNIFIED QUEUE & PLAYBACK API =================
 
-    final mediaItems = _queue.map((song) {
-      if (song is SongModel) {
-        return MediaItem(
-          id: song.id.toString(),
-          title: song.title,
-          artist: song.artist ?? 'Unknown Artist',
-          album: song.album ?? '',
-          duration: Duration(milliseconds: song.duration ?? 0),
-          artUri: Uri.parse("content://media/external/audio/albumart/${song.albumId}"),
-          extras: {'path': song.data},
-        );
-      } else if (song is PlaylistSong) {
-        return MediaItem(
-          id: song.id.toString(),
-          title: song.title,
-          artist: song.artist,
-          album: song.album ?? '',
-          duration: Duration(milliseconds: song.duration ?? 0),
-          extras: {'path': song.data},
-        );
-      } else {
-        throw Exception('Unsupported song type');
-      }
-    }).toList();
+  Future<void> setQueue(List<Song> songs, {int initialIndex = 0}) async {
+    if (songs.isEmpty) return;
 
-    queue.add(List.unmodifiable(mediaItems));
-    if (mediaItems.isNotEmpty) playSongAt(0);
+    _rawQueue.clear();
+    _rawQueue.addAll(songs);
+
+    final mediaItems = songs.map((s) => s.toMediaItem()).toList();
+    queue.add(mediaItems);
+
+    final sources = songs.map((s) => s.toAudioSource()).toList();
+    await _playlist.clear();
+    await _playlist.addAll(sources);
+
+    final validIndex = initialIndex.clamp(0, songs.length - 1);
+    await _player.seek(Duration.zero, index: validIndex);
+    await _player.play();
+
+    _persistSession();
+  }
+
+  Future<void> addToQueue(Song song) async {
+    _rawQueue.add(song);
+    queue.add(_rawQueue.map((s) => s.toMediaItem()).toList());
+    await _playlist.add(song.toAudioSource());
+    _persistSession();
+  }
+
+  Future<void> playNext(Song song) async {
+    final currentIndex = _player.currentIndex ?? 0;
+    final insertIndex = min(currentIndex + 1, _rawQueue.length);
+    _rawQueue.insert(insertIndex, song);
+    queue.add(_rawQueue.map((s) => s.toMediaItem()).toList());
+    await _playlist.insert(insertIndex, song.toAudioSource());
+    _persistSession();
+  }
+
+  Future<void> removeFromQueue(int index) async {
+    if (index < 0 || index >= _rawQueue.length) return;
+    _rawQueue.removeAt(index);
+    queue.add(_rawQueue.map((s) => s.toMediaItem()).toList());
+    await _playlist.removeAt(index);
+    _persistSession();
+  }
+
+  Future<void> reorderQueue(int oldIndex, int newIndex) async {
+    if (oldIndex < 0 || oldIndex >= _rawQueue.length || newIndex < 0 || newIndex >= _rawQueue.length) return;
+    final item = _rawQueue.removeAt(oldIndex);
+    _rawQueue.insert(newIndex, item);
+    queue.add(_rawQueue.map((s) => s.toMediaItem()).toList());
+    await _playlist.move(oldIndex, newIndex);
+    _persistSession();
+  }
+
+  Future<void> clearQueue() async {
+    _rawQueue.clear();
+    queue.add([]);
+    await _playlist.clear();
+    await _player.stop();
+    _currentSongSubject.add(null);
+    mediaItem.add(null);
   }
 
   @override
   Future<void> skipToQueueItem(int index) async {
-    if (index < 0 || index >= _queue.length) return;
-    await playSongAt(index);
-  }
-
-  Future<void> playSongAt(int index) async {
-    if (_queue.isEmpty || index < 0 || index >= _queue.length) return;
-    _currentIndex = index;
-    await playSong(_queue[_currentIndex]);
-  }
-
-  @override
-  Future<void> skipToNext() async {
-    if (_queue.isEmpty) return;
-    if (_repeatMode == AudioServiceRepeatMode.one) {
-      await playSongAt(_currentIndex);
-      return;
-    }
-    if (_shuffleEnabled) {
-      _currentIndex = _random.nextInt(_queue.length);
-    } else {
-      _currentIndex = (_currentIndex + 1) % _queue.length;
-    }
-    await playSongAt(_currentIndex);
-  }
-
-  @override
-  Future<void> skipToPrevious() async {
-    if (_queue.isEmpty) return;
-    if (_shuffleEnabled) {
-      _currentIndex = _random.nextInt(_queue.length);
-    } else {
-      _currentIndex = (_currentIndex - 1 + _queue.length) % _queue.length;
-    }
-    await playSongAt(_currentIndex);
-  }
-
-  Future<void> _handleSongCompletion() async {
-    if (_repeatMode == AudioServiceRepeatMode.one) {
-      await playSongAt(_currentIndex);
-    } else if (_shuffleEnabled) {
-      _currentIndex = _random.nextInt(_queue.length);
-      await playSongAt(_currentIndex);
-    } else if (_currentIndex < _queue.length - 1) {
-      await skipToNext();
-    } else if (_repeatMode == AudioServiceRepeatMode.all) {
-      await playSongAt(0);
-    }
-  }
-
-  @override
-  Future<void> setShuffleMode(AudioServiceShuffleMode shuffleMode) async {
-    _shuffleEnabled = shuffleMode == AudioServiceShuffleMode.all;
-    playbackState.add(playbackState.value.copyWith(shuffleMode: shuffleMode));
-  }
-
-  @override
-  Future<void> setRepeatMode(AudioServiceRepeatMode repeatMode) async {
-    _repeatMode = repeatMode;
-    playbackState.add(playbackState.value.copyWith(repeatMode: repeatMode));
+    if (index < 0 || index >= _rawQueue.length) return;
+    await _player.seek(Duration.zero, index: index);
+    await _player.play();
   }
 
   @override
@@ -298,17 +232,100 @@ class AudioPlayerHandler extends BaseAudioHandler {
   Future<void> seek(Duration position) => _player.seek(position);
 
   @override
-  Future<void> onNotificationDeleted() async {
-    await stop();
+  Future<void> skipToNext() async {
+    if (_player.hasNext) {
+      await _player.seekToNext();
+    } else if (playbackState.value.repeatMode == AudioServiceRepeatMode.all && _rawQueue.isNotEmpty) {
+      await _player.seek(Duration.zero, index: 0);
+    }
   }
 
-  AudioProcessingState _mapState(ProcessingState state) {
-    switch (state) {
-      case ProcessingState.idle: return AudioProcessingState.idle;
-      case ProcessingState.loading: return AudioProcessingState.loading;
-      case ProcessingState.buffering: return AudioProcessingState.buffering;
-      case ProcessingState.ready: return AudioProcessingState.ready;
-      case ProcessingState.completed: return AudioProcessingState.completed;
+  @override
+  Future<void> skipToPrevious() async {
+    if (_player.position.inSeconds > 3) {
+      await _player.seek(Duration.zero);
+    } else if (_player.hasPrevious) {
+      await _player.seekToPrevious();
+    } else if (_rawQueue.isNotEmpty) {
+      await _player.seek(Duration.zero, index: _rawQueue.length - 1);
+    }
+  }
+
+  @override
+  Future<void> setRepeatMode(AudioServiceRepeatMode repeatMode) async {
+    switch (repeatMode) {
+      case AudioServiceRepeatMode.none:
+        await _player.setLoopMode(LoopMode.off);
+        break;
+      case AudioServiceRepeatMode.one:
+        await _player.setLoopMode(LoopMode.one);
+        break;
+      case AudioServiceRepeatMode.all:
+      case AudioServiceRepeatMode.group:
+        await _player.setLoopMode(LoopMode.all);
+        break;
+    }
+    playbackState.add(playbackState.value.copyWith(repeatMode: repeatMode));
+    _persistSession();
+  }
+
+  @override
+  Future<void> setShuffleMode(AudioServiceShuffleMode shuffleMode) async {
+    final enabled = shuffleMode == AudioServiceShuffleMode.all;
+    await _player.setShuffleModeEnabled(enabled);
+    if (enabled) {
+      await _player.shuffle();
+    }
+    playbackState.add(playbackState.value.copyWith(shuffleMode: shuffleMode));
+    _persistSession();
+  }
+
+  @override
+  Future<void> setSpeed(double speed) async {
+    await _player.setSpeed(speed);
+    playbackState.add(playbackState.value.copyWith(speed: speed));
+  }
+
+  void setSleepTimer(Duration? duration) {
+    _sleepTimer?.cancel();
+    if (duration == null) {
+      _sleepTimerSubject.add(null);
+      return;
+    }
+
+    _sleepTimerSubject.add(duration);
+    _sleepTimer = Timer(duration, () async {
+      await pause();
+      _sleepTimerSubject.add(null);
+    });
+  }
+
+  Future<void> _persistSession() async {
+    try {
+      final idx = _player.currentIndex ?? 0;
+      final posMs = _player.position.inMilliseconds;
+      final repMode = playbackState.value.repeatMode.name;
+      final shufMode = playbackState.value.shuffleMode.name;
+
+      await DatabaseHelper.instance.saveQueueSession(
+        queue: _rawQueue,
+        currentIndex: idx,
+        positionMs: posMs,
+        repeatMode: repMode,
+        shuffleMode: shufMode,
+      );
+    } catch (e) {
+      debugPrint('Error persisting session: $e');
+    }
+  }
+
+  Future<void> restoreSession() async {
+    try {
+      final session = await DatabaseHelper.instance.getQueueSession();
+      if (session == null) return;
+      debugPrint('Queue session restored successfully');
+    } catch (e) {
+      debugPrint("Session restore error: $e");
     }
   }
 }

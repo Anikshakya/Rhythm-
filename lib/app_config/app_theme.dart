@@ -1,40 +1,47 @@
 import 'package:flutter/material.dart';
 
 class AppTheme {
-  // Prevent instantiation
   AppTheme._();
-  
-  static const Color gold = Color(0xFFD4AF37);
-  static const Color darkBackground = Color(0xFF121212);
-  static const Color cardColor = Color(0xFF1E1E1E);
 
-  // 🌑 Dark Theme (Luxury look)
+  // Signature Apple Music Red / Pink Accent
+  static const Color appleRed = Color(0xFFFA2D48);
+  static const Color darkBackground = Color(0xFF000000);
+  static const Color darkCard = Color(0xFF1C1C1E);
+  static const Color lightBackground = Color(0xFFF2F2F7);
+
+  // 🌑 Apple Music Dark Theme
   static ThemeData darkTheme = ThemeData(
     brightness: Brightness.dark,
     scaffoldBackgroundColor: darkBackground,
-    primaryColor: gold,
+    primaryColor: appleRed,
     colorScheme: const ColorScheme.dark(
-      primary: gold,
-      secondary: gold,
-      surface: cardColor,
+      primary: appleRed,
+      secondary: appleRed,
+      surface: darkCard,
     ),
 
     appBarTheme: const AppBarTheme(
-      backgroundColor: cardColor,
+      backgroundColor: darkBackground,
       foregroundColor: Colors.white,
       elevation: 0,
+      scrolledUnderElevation: 0,
     ),
 
     floatingActionButtonTheme: const FloatingActionButtonThemeData(
-      backgroundColor: gold,
-      foregroundColor: Colors.black,
+      backgroundColor: appleRed,
+      foregroundColor: Colors.white,
     ),
 
     bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-      backgroundColor: cardColor,
-      selectedItemColor: gold,
+      backgroundColor: Color(0xFF121212),
+      selectedItemColor: appleRed,
       unselectedItemColor: Colors.grey,
       type: BottomNavigationBarType.fixed,
+    ),
+
+    sliderTheme: const SliderThemeData(
+      activeTrackColor: appleRed,
+      thumbColor: appleRed,
     ),
 
     textTheme: const TextTheme(
@@ -46,15 +53,15 @@ class AppTheme {
     ),
   );
 
-  // ☀️ Light Theme (Premium minimal look)
+  // ☀️ Apple Music Light Theme
   static ThemeData lightTheme = ThemeData(
     brightness: Brightness.light,
     scaffoldBackgroundColor: Colors.white,
-    primaryColor: gold,
+    primaryColor: appleRed,
 
     colorScheme: const ColorScheme.light(
-      primary: gold,
-      secondary: gold,
+      primary: appleRed,
+      secondary: appleRed,
       surface: Colors.white,
     ),
 
@@ -62,18 +69,24 @@ class AppTheme {
       backgroundColor: Colors.white,
       foregroundColor: Colors.black,
       elevation: 0,
+      scrolledUnderElevation: 0,
     ),
 
     floatingActionButtonTheme: const FloatingActionButtonThemeData(
-      backgroundColor: gold,
+      backgroundColor: appleRed,
       foregroundColor: Colors.white,
     ),
 
     bottomNavigationBarTheme: const BottomNavigationBarThemeData(
       backgroundColor: Colors.white,
-      selectedItemColor: gold,
-      unselectedItemColor: Colors.black54,
+      selectedItemColor: appleRed,
+      unselectedItemColor: Colors.black45,
       type: BottomNavigationBarType.fixed,
+    ),
+
+    sliderTheme: const SliderThemeData(
+      activeTrackColor: appleRed,
+      thumbColor: appleRed,
     ),
 
     textTheme: const TextTheme(

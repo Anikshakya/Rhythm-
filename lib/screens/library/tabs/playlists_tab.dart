@@ -1,217 +1,182 @@
-import 'dart:convert';
-import 'dart:io';
-import 'package:dhun/widgets/custom_scroll_animation.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-// ignore: depend_on_referenced_packages
-import 'package:path_provider/path_provider.dart';
-import '../../../core/models/playlist_model.dart';
-import '../../playlists/playlist_songs_screen.dart';
+import 'package:get/get.dart';
+import '../../../controllers/favorites_controller.dart';
+import '../../../controllers/playlist_controller.dart';
+import '../../../widgets/custom_scroll_animation.dart';
+import '../../favorites/favorites_screen.dart';
+import '../../playlists/playlists_screen.dart';
 
-class PlaylistsTab extends StatefulWidget {
+class PlaylistsTab extends StatelessWidget {
   final VoidCallback onNavigateToPlayer;
-  const PlaylistsTab({super.key, required this.onNavigateToPlayer});
 
-  @override
-  State<PlaylistsTab> createState() => _PlaylistsTabState();
-}
-
-class _PlaylistsTabState extends State<PlaylistsTab> {
-  List<PlaylistModel> _playlists = [];
-  bool _isLoading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadPlaylists();
-  }
-
-  Future<File> get _localFile async {
-    final dir = await getApplicationDocumentsDirectory();
-    return File('${dir.path}/playlists.json');
-  }
-
-  Future<void> _loadPlaylists() async {
-    try {
-      final file = await _localFile;
-      if (await file.exists()) {
-        final content = await file.readAsString();
-        final jsonList = jsonDecode(content) as List<dynamic>;
-        if (mounted) {
-          setState(() {
-            _playlists = jsonList
-                .map((e) => PlaylistModel.fromJson(e as Map<String, dynamic>))
-                .toList();
-            _isLoading = false;
-          });
-        }
-      } else {
-        final favorite = PlaylistModel(name: 'Favorites', songs: [], isFavourite: true);
-        _playlists = [favorite];
-        await _savePlaylists();
-        if (mounted) setState(() => _isLoading = false);
-      }
-    } catch (e) {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
-  Future<void> _savePlaylists() async {
-    final file = await _localFile;
-    await file.writeAsString(jsonEncode(_playlists.map((p) => p.toJson()).toList()));
-  }
-
-  void _showCreateDialog() {
-    if (_playlists.length >= 6) return; // Limit check
-
-    final controller = TextEditingController();
-    showCupertinoDialog(
-      context: context,
-      builder: (context) => CupertinoAlertDialog(
-        title: const Text('New Playlist'),
-        content: Padding(
-          padding: const EdgeInsets.only(top: 12),
-          child: CupertinoTextField(
-            controller: controller,
-            placeholder: 'Playlist Name',
-            autofocus: true,
-            style: TextStyle(color: CupertinoColors.label.resolveFrom(context)),
-          ),
-        ),
-        actions: [
-          CupertinoDialogAction(
-            child: const Text('Cancel'),
-            onPressed: () => Navigator.pop(context),
-          ),
-          CupertinoDialogAction(
-            isDefaultAction: true,
-            child: const Text('Create'),
-            onPressed: () {
-              final name = controller.text.trim();
-              if (name.isNotEmpty) {
-                setState(() {
-                  _playlists.add(PlaylistModel(name: name, songs: []));
-                });
-                _savePlaylists();
-              }
-              Navigator.pop(context);
-            },
-          ),
-        ],
-      ),
-    );
-  }
+  const PlaylistsTab({
+    super.key,
+    required this.onNavigateToPlayer,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final playlistController = Get.find<PlaylistController>();
+    final favoritesController = Get.find<FavoritesController>();
 
-    return Column(
-      children: [
-        /// iOS Style "Add New" Row
-        GestureDetector(
-          onTap: _showCreateDialog,
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              border: Border(bottom: BorderSide(color: isDark ? Colors.white10 : Colors.black12)),
-            ),
-            child: Row(
-              children: [
-                Icon(CupertinoIcons.plus_circle_fill, color: CupertinoColors.systemPink.resolveFrom(context)),
-                const SizedBox(width: 12),
-                const Text('New Playlist...', style: TextStyle(fontSize: 17, color: CupertinoColors.systemPink)),
-              ],
-            ),
-          ),
-        ),
+    return Obx(() {
+      if (playlistController.isLoading.value) {
+        return const Center(child: CupertinoActivityIndicator());
+      }
 
-        Expanded(
-          child: _isLoading
-              ? const Center(child: CupertinoActivityIndicator())
-              : ListView.builder(
-                  physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
-                  padding: const EdgeInsets.only(bottom: 120),
-                  itemCount: _playlists.length,
-                  itemBuilder: (context, index) {
-                    final playlist = _playlists[index];
-                    return CustomScrollAnimation(
-                      key: ValueKey(playlist.name + index.toString()),
-                      index: index,
-                      child: _buildPlaylistTile(playlist, index, isDark),
-                    );
-                  },
-                ),
-        ),
-      ],
-    );
-  }
+      final playlists = playlistController.playlists;
 
-  Widget _buildPlaylistTile(PlaylistModel playlist, int index, bool isDark) {
-    return CupertinoButton(
-      padding: EdgeInsets.zero,
-      onPressed: () {
-        Navigator.push(
-          context,
-          CupertinoPageRoute(
-            builder: (_) => PlaylistSongsScreen(
-              playlist: playlist,
-              onNavigateToPlayer: widget.onNavigateToPlayer,
-              onUpdatePlaylist: () {
-                setState(() {});
-                _savePlaylists();
-              },
-            ),
-          ),
-        );
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          border: Border(bottom: BorderSide(color: isDark ? Colors.white10 : Colors.black12, width: 0.5)),
-        ),
-        child: Row(
-          children: [
-            /// Playlist Artwork Placeholder
-            Container(
-              width: 60,
-              height: 60,
+      return Column(
+        children: [
+
+          /// PINNED DEFAULT FAVORITES CARD
+          Obx(() {
+            final favCount = favoritesController.favoriteSongs.length;
+
+            return Container(
+              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8),
-                color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.04),
-              ),
-              child: Icon(
-                playlist.isFavourite ? CupertinoIcons.heart_fill : CupertinoIcons.music_note_list,
-                color: playlist.isFavourite ? CupertinoColors.systemPink : (isDark ? Colors.white30 : Colors.black26),
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    playlist.name,
-                    style: TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w500,
-                      color: isDark ? Colors.white : Colors.black,
-                    ),
-                  ),
-                  Text(
-                    '${playlist.songs.length} songs',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: isDark ? Colors.white54 : Colors.black54,
-                    ),
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFFF416C), Color(0xFFFF4B2B)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.redAccent.withValues(alpha: 0.3),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
                   ),
                 ],
               ),
+              child: ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                leading: Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: Colors.white24,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(CupertinoIcons.heart_fill, color: Colors.white, size: 26),
+                ),
+                title: const Text(
+                  'Favorite Songs',
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                subtitle: Text(
+                  '$favCount favorited tracks',
+                  style: const TextStyle(color: Colors.white70, fontSize: 13),
+                ),
+                trailing: const Icon(CupertinoIcons.chevron_forward, color: Colors.white70, size: 20),
+                onTap: () => Get.to(() => const FavoritesScreen()),
+              ),
+            );
+          }),
+
+          /// CREATE PLAYLIST BUTTON
+          ListTile(
+            leading: const Icon(CupertinoIcons.plus_circle_fill, color: Colors.pinkAccent),
+            title: const Text('Create New Playlist', style: TextStyle(color: Colors.pinkAccent, fontWeight: FontWeight.bold)),
+            onTap: () => _showCreateDialog(context, playlistController),
+          ),
+          const Divider(height: 1),
+
+          /// USER PLAYLISTS LIST
+          Expanded(
+            child: playlists.isEmpty
+                ? const Center(child: Text('No custom playlists created yet'))
+                : ListView.builder(
+                    padding: const EdgeInsets.only(bottom: 120),
+                    itemCount: playlists.length,
+                    itemBuilder: (context, index) {
+                      final playlist = playlists[index];
+                      return CustomScrollAnimation(
+                        key: ValueKey('pl_${playlist.id}'),
+                        index: index,
+                        child: ListTile(
+                          leading: Container(
+                            width: 50,
+                            height: 50,
+                            decoration: BoxDecoration(
+                              color: Colors.grey[800],
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Icon(
+                              playlist.isFavorite ? CupertinoIcons.heart_fill : CupertinoIcons.music_albums,
+                              color: playlist.isFavorite ? Colors.redAccent : Colors.white70,
+                            ),
+                          ),
+                          title: Text(playlist.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                          subtitle: Text('${playlist.songCount} songs'),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: const Icon(CupertinoIcons.doc_on_doc, size: 20),
+                                onPressed: () => playlistController.duplicatePlaylist(playlist),
+                              ),
+                              IconButton(
+                                icon: const Icon(CupertinoIcons.trash, size: 20, color: Colors.redAccent),
+                                onPressed: () => playlistController.deletePlaylist(playlist.id),
+                              ),
+                            ],
+                          ),
+                          onTap: () {
+                            Get.to(() => PlaylistDetailScreen(playlist: playlist));
+                          },
+                        ),
+                      );
+                    },
+                  ),
+          ),
+        ],
+      );
+    });
+  }
+
+  void _showCreateDialog(BuildContext context, PlaylistController controller) {
+    final nameCtrl = TextEditingController();
+    final descCtrl = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('New Playlist'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameCtrl,
+                decoration: const InputDecoration(hintText: 'Playlist Name'),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: descCtrl,
+                decoration: const InputDecoration(hintText: 'Description (Optional)'),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
             ),
-            Icon(CupertinoIcons.chevron_forward, size: 18, color: isDark ? Colors.white24 : Colors.black26),
+            ElevatedButton(
+              onPressed: () {
+                if (nameCtrl.text.isNotEmpty) {
+                  controller.createPlaylist(nameCtrl.text, description: descCtrl.text);
+                  Navigator.pop(context);
+                }
+              },
+              child: const Text('Create'),
+            ),
           ],
-        ),
-      ),
+        );
+      },
     );
   }
 }

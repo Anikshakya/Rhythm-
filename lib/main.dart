@@ -1,19 +1,31 @@
-import 'package:dhun/app_config/app_theme.dart';
-import 'package:dhun/controllers/theme_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-
-import 'package:dhun/widgets/fullscreen_player.dart';
-import 'package:dhun/core/services/audio_handler.dart';
+import 'app_config/app_theme.dart';
+import 'controllers/audio_controller.dart';
+import 'controllers/favorites_controller.dart';
+import 'controllers/library_controller.dart';
+import 'controllers/online_controller.dart';
+import 'controllers/playlist_controller.dart';
+import 'controllers/search_controller.dart';
+import 'controllers/theme_controller.dart';
+import 'core/services/audio_handler.dart';
 import 'screens/home/home_screen.dart';
+import 'widgets/fullscreen_player.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // 1. Initialize AudioService & RhythmAudioHandler
   await initAudioService();
 
-  /// Inject ThemeController globally
+  // 2. Inject Controllers
   Get.put(ThemeController(), permanent: true);
+  Get.put(AudioController(), permanent: true);
+  Get.put(LibraryController(), permanent: true);
+  Get.put(OnlineController(), permanent: true);
+  Get.put(PlaylistController(), permanent: true);
+  Get.put(FavoritesController(), permanent: true);
+  Get.put(UnifiedSearchController(), permanent: true);
 
   runApp(const RhythmApp());
 }
@@ -23,29 +35,28 @@ class RhythmApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    /// Access controller
     final ThemeController themeController = Get.find();
 
     return Obx(
       () => GetMaterialApp(
         title: 'Rhythm',
         debugShowCheckedModeBanner: false,
-
-        /// THEME CONTROLLED BY CONTROLLER
         theme: AppTheme.lightTheme,
         darkTheme: AppTheme.darkTheme,
         themeMode: themeController.themeMode.value,
-
-        /// ROUTING
         initialRoute: '/',
+        defaultTransition: Transition.cupertino,
         getPages: [
           GetPage(
             name: '/',
-            page: () => HomeScreen(),
+            page: () => const HomeScreen(),
           ),
           GetPage(
             name: '/player',
             page: () => const FullScreenPlayer(),
+            transition: Transition.downToUp,
+            transitionDuration: const Duration(milliseconds: 380),
+            curve: Curves.easeOutCubic,
           ),
         ],
       ),

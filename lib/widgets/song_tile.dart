@@ -1,154 +1,300 @@
-import 'package:audio_service/audio_service.dart';
-import 'package:dhun/widgets/fullscreen_player.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:on_audio_query/on_audio_query.dart';
-import '../../core/services/audio_handler.dart';
+import '../controllers/audio_controller.dart';
+import '../controllers/favorites_controller.dart';
+import '../controllers/playlist_controller.dart';
+import '../core/models/song_model.dart';
+import 'artwork_widget.dart';
+import 'custom_scroll_animation.dart';
 
 class SongTile extends StatelessWidget {
-  final SongModel song;
-  final VoidCallback? onTap;
-  final VoidCallback? onLongPress;
+  final Song song;
   final int index;
+  final List<Song>? contextQueue;
+  final VoidCallback? onTap;
 
   const SongTile({
     super.key,
     required this.song,
-    required this.index,
+    this.index = 0,
+    this.contextQueue,
     this.onTap,
-    this.onLongPress,
   });
 
-  String _formatDuration(int milliseconds) {
-    final seconds = (milliseconds / 1000).round();
-    final minutes = seconds ~/ 60;
-    final remaining = (seconds % 60).toString().padLeft(2, '0');
-    return '$minutes:$remaining';
+  String _formatDuration(Duration duration) {
+    final minutes = duration.inMinutes;
+    final seconds = duration.inSeconds % 60;
+    return '$minutes:${seconds.toString().padLeft(2, '0')}';
   }
 
   @override
   Widget build(BuildContext context) {
+    final audioController = Get.find<AudioController>();
+    final favoritesController = Get.find<FavoritesController>();
+    final playlistController = Get.find<PlaylistController>();
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    return StreamBuilder<MediaItem?>(
-      stream: audioHandler.mediaItem,
-      builder: (context, snapshot) {
-        final currentSongId = snapshot.data?.id;
-        final isPlaying = currentSongId == song.id.toString();
+    return CustomScrollAnimation(
+      index: index,
+      child: Obx(() {
+        final isPlayingCurrent = audioController.currentSong.value?.id == song.id;
+        final isFav = favoritesController.isFavorite(song.id);
 
-        return Column(
-          children: [
-            Material(
-              color: Colors.transparent, // Let the parent container handle background
-              child: InkWell(
-                // iOS uses a quick fade/highlight rather than a ripple
-                splashColor: Colors.transparent,
-                highlightColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05),
-                onTap: () {
-                  if (isPlaying) {
-                    Get.to(()=> const FullScreenPlayer(), transition: Transition.downToUp);
-                  } else {
-                    onTap?.call();
-                  }
-                },
-                onLongPress: onLongPress,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  child: Row(
+        return Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () {
+              if (onTap != null) {
+                onTap!();
+              } else {
+                audioController.playSong(song, contextQueue: contextQueue);
+              }
+            },
+            onLongPress: () => _showCupertinoActionSheet(context, audioController, favoritesController, playlistController),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Row(
+                children: [
+
+                  /// ARTWORK + PLAYING INDICATOR
+                  Stack(
+                    alignment: Alignment.center,
                     children: [
-                      // 1. IOS STYLE ARTWORK
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(10),
-                        child: QueryArtworkWidget(
-                          id: song.id,
-                          artworkClipBehavior: Clip.none,
-                          type: ArtworkType.AUDIO,
-                          keepOldArtwork: true,
-                          nullArtworkWidget: Container(
-                            width: 48,
-                            height: 48,
-                            color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.04),
-                            child: Icon(
-                              CupertinoIcons.music_note, 
-                              color: isDark ? Colors.white24 : Colors.black26,
-                              size: 20,
-                            ),
+                      ArtworkWidget(
+                        songId: song.id,
+                        artworkUrl: song.artwork,
+                        size: 52,
+                        borderRadius: 10,
+                      ),
+                      if (isPlayingCurrent)
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 300),
+                          width: 52,
+                          height: 52,
+                          decoration: BoxDecoration(
+                            color: Colors.black45,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(
+                            CupertinoIcons.speaker_2_fill,
+                            color: Color(0xFFFA2D48),
+                            size: 24,
                           ),
                         ),
-                      ),
+                    ],
+                  ),
+                  const SizedBox(width: 14),
 
-                      const SizedBox(width: 14),
-
-                      // 2. SONG INFO
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                  /// TITLE & ARTIST
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          song.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: isPlayingCurrent ? FontWeight.bold : FontWeight.w600,
+                            color: isPlayingCurrent
+                                ? const Color(0xFFFA2D48)
+                                : (isDark ? Colors.white : Colors.black),
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        Row(
                           children: [
-                            Text(
-                              song.title,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: 17, // Native iOS body size
-                                fontWeight: isPlaying ? FontWeight.w600 : FontWeight.w400,
-                                letterSpacing: -0.4,
-                                color: isPlaying ? theme.colorScheme.primary : (isDark ? Colors.white : Colors.black),
+                            if (song.isNetwork)
+                              Container(
+                                margin: const EdgeInsets.only(right: 6),
+                                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFFA2D48).withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: const Text(
+                                  'ONLINE',
+                                  style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Color(0xFFFA2D48)),
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              song.artist ?? "Unknown Artist",
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: 14,
-                                letterSpacing: -0.2,
-                                color: isDark ? Colors.white54 : Colors.black54,
+                            Expanded(
+                              child: Text(
+                                '${song.artist} • ${song.album}',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: isDark ? Colors.white54 : Colors.black54,
+                                ),
                               ),
                             ),
                           ],
                         ),
-                      ),
+                      ],
+                    ),
+                  ),
 
-                      // 3. RIGHT SIDE INDICATOR
-                      if (isPlaying)
-                        // iOS Style Equalizer icon or dot
-                        Icon(CupertinoIcons.waveform, color: theme.colorScheme.primary, size: 18)
-                      else
-                        Text(
-                          _formatDuration(song.duration ?? 0),
-                          style: TextStyle(
-                            fontSize: 14, 
-                            color: isDark ? Colors.white24 : Colors.black26,
-                          ),
+                  /// DURATION & OVERFLOW BUTTON
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (isFav)
+                        const Padding(
+                          padding: EdgeInsets.only(right: 6),
+                          child: Icon(CupertinoIcons.heart_fill, color: Color(0xFFFA2D48), size: 16),
                         ),
-                      
+                      Text(
+                        _formatDuration(song.duration),
+                        style: TextStyle(fontSize: 12, color: isDark ? Colors.white38 : Colors.black38),
+                      ),
                       const SizedBox(width: 4),
-                      Icon(
-                        CupertinoIcons.chevron_right, 
-                        size: 14, 
-                        color: isDark ? Colors.white10 : Colors.black12
+                      IconButton(
+                        icon: Icon(CupertinoIcons.ellipsis, size: 20, color: isDark ? Colors.white54 : Colors.black45),
+                        onPressed: () => _showCupertinoActionSheet(context, audioController, favoritesController, playlistController),
                       ),
                     ],
                   ),
-                ),
+                ],
               ),
             ),
-            
-            // 4. INDENTED DIVIDER (Classic iOS)
-            Padding(
-              padding: const EdgeInsets.only(left: 78), // Indented past the artwork
-              child: Divider(
-                height: 1,
-                thickness: 0.5,
-                color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05),
-              ),
-            ),
-          ],
+          ),
         );
-      },
+      }),
+    );
+  }
+
+  void _showCupertinoActionSheet(
+    BuildContext context,
+    AudioController audioController,
+    FavoritesController favoritesController,
+    PlaylistController playlistController,
+  ) {
+    final isFav = favoritesController.isFavorite(song.id);
+
+    showCupertinoModalPopup<void>(
+      context: context,
+      builder: (BuildContext context) => CupertinoActionSheet(
+        title: Text(song.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+        message: Text('${song.artist} • ${song.album}'),
+        actions: <CupertinoActionSheetAction>[
+          CupertinoActionSheetAction(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  isFav ? CupertinoIcons.heart_fill : CupertinoIcons.heart,
+                  color: isFav ? const Color(0xFFFA2D48) : CupertinoColors.activeBlue,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Text(isFav ? 'Remove from Favorites' : 'Add to Favorites'),
+              ],
+            ),
+            onPressed: () {
+              favoritesController.toggleFavoriteSong(song);
+              Navigator.pop(context);
+              Get.snackbar(
+                'Favorites',
+                isFav ? 'Removed from favorites' : 'Added to favorites',
+                snackPosition: SnackPosition.BOTTOM,
+                duration: const Duration(seconds: 2),
+              );
+            },
+          ),
+          CupertinoActionSheetAction(
+            child: const Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(CupertinoIcons.text_insert, size: 20),
+                SizedBox(width: 8),
+                Text('Play Next'),
+              ],
+            ),
+            onPressed: () {
+              audioController.playNext(song);
+              Navigator.pop(context);
+              Get.snackbar('Queue', 'Playing next: ${song.title}', snackPosition: SnackPosition.BOTTOM);
+            },
+          ),
+          CupertinoActionSheetAction(
+            child: const Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(CupertinoIcons.list_bullet_indent, size: 20),
+                SizedBox(width: 8),
+                Text('Add to Queue'),
+              ],
+            ),
+            onPressed: () {
+              audioController.addToQueue(song);
+              Navigator.pop(context);
+              Get.snackbar('Queue', 'Added to queue: ${song.title}', snackPosition: SnackPosition.BOTTOM);
+            },
+          ),
+          CupertinoActionSheetAction(
+            child: const Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(CupertinoIcons.music_albums, size: 20),
+                SizedBox(width: 8),
+                Text('Add to Playlist'),
+              ],
+            ),
+            onPressed: () {
+              Navigator.pop(context);
+              _showCupertinoPlaylistPicker(context, playlistController);
+            },
+          ),
+        ],
+        cancelButton: CupertinoActionSheetAction(
+          isDefaultAction: true,
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+      ),
+    );
+  }
+
+  void _showCupertinoPlaylistPicker(BuildContext context, PlaylistController controller) {
+    showCupertinoModalPopup<void>(
+      context: context,
+      builder: (BuildContext context) => CupertinoActionSheet(
+        title: const Text('Add to Playlist', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+        message: Text(song.title),
+        actions: controller.playlists.isEmpty
+            ? [
+                CupertinoActionSheetAction(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('No playlists found. Create one first!'),
+                ),
+              ]
+            : controller.playlists.map((pl) {
+                return CupertinoActionSheetAction(
+                  onPressed: () async {
+                    final navigator = Navigator.of(context);
+                    await controller.addSongToPlaylist(pl.id, song);
+                    navigator.pop();
+                    Get.snackbar('Playlist', 'Added to "${pl.name}"', snackPosition: SnackPosition.BOTTOM);
+                  },
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(CupertinoIcons.music_note_list, size: 18),
+                      const SizedBox(width: 8),
+                      Text('${pl.name} (${pl.songCount} songs)'),
+                    ],
+                  ),
+                );
+              }).toList(),
+        cancelButton: CupertinoActionSheetAction(
+          isDefaultAction: true,
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+      ),
     );
   }
 }

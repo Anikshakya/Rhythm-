@@ -1,161 +1,143 @@
-import 'package:dhun/widgets/custom_scroll_animation.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:on_audio_query/on_audio_query.dart';
-import 'package:dhun/widgets/fullscreen_player.dart';
-import '../../artist/artist_songs_screen.dart';
+import 'package:get/get.dart';
+import '../../../controllers/audio_controller.dart';
+import '../../../controllers/library_controller.dart';
+import '../../../widgets/artwork_widget.dart';
+import '../../../widgets/custom_scroll_animation.dart';
+import '../../../widgets/miniplayer.dart';
+import '../../../widgets/fullscreen_player.dart';
+import '../../../widgets/song_tile.dart';
 
-class ArtistsTab extends StatefulWidget {
+class ArtistsTab extends StatelessWidget {
   const ArtistsTab({super.key});
 
   @override
-  State<ArtistsTab> createState() => _ArtistsTabState();
+  Widget build(BuildContext context) {
+    final libraryController = Get.find<LibraryController>();
+    final theme = Theme.of(context);
+
+    return Obx(() {
+      final artistsMap = libraryController.artists;
+
+      if (artistsMap.isEmpty) {
+        return const Center(
+          child: Text('No artists found', style: TextStyle(color: Colors.grey)),
+        );
+      }
+
+      final artistEntries = artistsMap.entries.toList();
+
+      return GridView.builder(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 120),
+        physics: const BouncingScrollPhysics(),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          mainAxisSpacing: 20,
+          crossAxisSpacing: 16,
+          childAspectRatio: 0.8,
+        ),
+        itemCount: artistEntries.length,
+        itemBuilder: (context, index) {
+          final entry = artistEntries[index];
+          final artistName = entry.key;
+          final songs = entry.value;
+          final sampleArt = songs.firstWhere((s) => s.artwork != null && s.artwork!.isNotEmpty, orElse: () => songs.first).artwork;
+
+          return CustomScrollAnimation(
+            key: ValueKey('artist_$artistName'),
+            index: index,
+            child: GestureDetector(
+              onTap: () {
+                Get.to(() => ArtistDetailScreen(artistName: artistName, songs: songs));
+              },
+              child: Column(
+                children: [
+                  ArtworkWidget(
+                    songId: songs.first.id,
+                    artworkUrl: sampleArt,
+                    size: 130,
+                    borderRadius: 65,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    artistName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                  ),
+                  Text(
+                    '${songs.length} songs',
+                    style: TextStyle(fontSize: 12, color: theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.6)),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      );
+    });
+  }
 }
 
-class _ArtistsTabState extends State<ArtistsTab> {
-  final OnAudioQuery _audioQuery = OnAudioQuery();
-  late Future<List<ArtistModel>> _artistsFuture;
+class ArtistDetailScreen extends StatelessWidget {
+  final String artistName;
+  final List<dynamic> songs;
 
-  @override
-  void initState() {
-    super.initState();
-    initialize();
-  }
+  const ArtistDetailScreen({super.key, required this.artistName, required this.songs});
 
-  initialize() async{
-    _artistsFuture = _audioQuery.queryArtists(
-      ignoreCase: false
+  void _navigateToPlayer(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      enableDrag: true,
+      useSafeArea: false,
+      builder: (context) {
+        return ClipRRect(
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+          child: SizedBox(
+            height: MediaQuery.of(context).size.height * 0.94,
+            child: const FullScreenPlayer(),
+          ),
+        );
+      },
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+    final audioController = Get.find<AudioController>();
 
-    return FutureBuilder<List<ArtistModel>>(
-      future: _artistsFuture,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CupertinoActivityIndicator());
-        }
-
-        final artists = snapshot.data ?? [];
-        if (artists.isEmpty) {
-          return const Center(
-            child: Text('No artists found', style: TextStyle(color: Colors.grey)),
-          );
-        }
-
-        return GridView.builder(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 120), // Padding for MiniPlayer
-          physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            mainAxisSpacing: 24,
-            crossAxisSpacing: 16,
-            childAspectRatio: 0.85, // Adjusted for circular avatar + text
+    return Scaffold(
+      appBar: AppBar(title: Text(artistName)),
+      body: Stack(
+        children: [
+          ListView.builder(
+            padding: const EdgeInsets.only(bottom: 120),
+            itemCount: songs.length,
+            itemBuilder: (context, index) {
+              final song = songs[index];
+              return SongTile(
+                song: song,
+                index: index,
+                contextQueue: List.from(songs),
+                onTap: () => audioController.playSong(song, contextQueue: List.from(songs)),
+              );
+            },
           ),
-          itemCount: artists.length,
-          itemBuilder: (context, index) {
-            final artist = artists[index];
 
-            return CustomScrollAnimation(
-              key: ValueKey(artist.id),
-              index: index,
-              child: GestureDetector(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    CupertinoPageRoute(
-                      builder: (_) => ArtistSongsScreen(
-                        artist: artist,
-                        onNavigateToPlayer: () {
-                          Navigator.of(context).push(
-                            CupertinoPageRoute(
-                              builder: (_) => const FullScreenPlayer(),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  );
-                },
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    /// 1. CIRCULAR ARTIST AVATAR (iOS Style)
-                    Container(
-                      width: 146,
-                      height: 146,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(24),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: isDark ? 0.4 : 0.1),
-                            blurRadius: 10,
-                            offset: const Offset(0, 5),
-                          )
-                        ],
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(24),
-                        child: QueryArtworkWidget(
-                          artworkClipBehavior: Clip.none,
-                          id: artist.id,
-                          type: ArtworkType.ARTIST,
-                          artworkFit: BoxFit.cover,
-                          nullArtworkWidget: Container(
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(24),
-                              color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.04),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: isDark ? 0.4 : 0.1),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 5),
-                                )
-                              ],
-                            ),
-                            child: Icon(
-                              CupertinoIcons.person_crop_circle_fill,
-                              size: 80,
-                              color: isDark ? Colors.white24 : Colors.black12,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-
-                    /// 2. ARTIST TEXT
-                    Text(
-                      artist.artist,
-                      maxLines: 1,
-                      textAlign: TextAlign.center,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontWeight: FontWeight.w500,
-                        fontSize: 16,
-                        letterSpacing: -0.4,
-                        color: isDark ? Colors.white : Colors.black,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      '${artist.numberOfTracks} songs',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: isDark ? Colors.white54 : Colors.black54,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
-        );
-      },
+          /// GLOBAL MINI PLAYER
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: MiniPlayer(
+              onTap: () => _navigateToPlayer(context),
+              onSwipeUp: () => _navigateToPlayer(context),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
