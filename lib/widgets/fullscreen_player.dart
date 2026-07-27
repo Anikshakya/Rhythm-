@@ -65,13 +65,13 @@ class _FullScreenPlayerState extends State<FullScreenPlayer> with SingleTickerPr
                       fit: StackFit.expand,
                       children: [
                         Opacity(
-                          opacity:isDark ? 0.16 : 0.6,
+                          opacity: 0.16,
                           child: Transform.scale(
-                            scale: 1.2,
+                            scale: 1.5,
                             child: ArtworkWidget(
                               songId: currentSong.id,
                               artworkUrl: currentSong.artwork,
-                              size: double.infinity,
+                              // size: MediaQuery.of(context).size.width * 20,
                               borderRadius: 0,
                             ),
                           ),
@@ -80,7 +80,7 @@ class _FullScreenPlayerState extends State<FullScreenPlayer> with SingleTickerPr
                           filter: ImageFilter.blur(sigmaX: 60, sigmaY: 60),
                           child: Container(
                             decoration: BoxDecoration(
-                            color: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.white.withValues(alpha: 0.70),
+                            color: Colors.white.withValues(alpha: 0.06),
                             )
                           ),
                         ),
@@ -90,6 +90,7 @@ class _FullScreenPlayerState extends State<FullScreenPlayer> with SingleTickerPr
                 ),
               ),
         
+            
             Column(
               children: [
                 const SizedBox(height: 18),
@@ -144,10 +145,10 @@ class _FullScreenPlayerState extends State<FullScreenPlayer> with SingleTickerPr
                             borderRadius: BorderRadius.circular(20),
                             boxShadow: [
                               BoxShadow(
-                                color: isDark ? Colors.white.withValues(alpha: isPlaying ? 0.1 : 0.08) : Colors.black.withValues(alpha: isPlaying ? 0.40 : 0.26),
-                                blurRadius: isPlaying ? isDark ? 12 : 18 : isDark ? 8 : 18,
-                                spreadRadius: isPlaying ?  isDark ? 3 : 1 : isDark ? 0 : 0,
-                                offset: Offset(0, isPlaying ? isDark ? 6 : 12 : isDark ? 4 : 12),
+                                color: isDark ? Colors.white.withValues(alpha: isPlaying ? 0.15 : 0.12) : Colors.black.withValues(alpha: isPlaying ? 0.2 : 0.2),
+                                blurRadius: 12,
+                                spreadRadius: isPlaying ? 6 : 2,
+                                offset: Offset(0, isPlaying ? 4 : 2),
                               ),
                             ],
                           ),

@@ -139,7 +139,7 @@ class MiniPlayer extends StatelessWidget {
                         value: progress,
                         minHeight: 2.5,
                         backgroundColor: Colors.transparent,
-                        valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFFA2D48)),
+                        // valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFFA2D48)),
                       ),
                     ),
                   ],
