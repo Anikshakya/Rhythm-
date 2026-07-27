@@ -26,7 +26,7 @@ class _FullScreenPlayerState extends State<FullScreenPlayer> with SingleTickerPr
       vsync: this,
       duration: const Duration(milliseconds: 400),
     );
-    _scaleAnimation = Tween<double>(begin: 0.82, end: 1.0).animate(
+    _scaleAnimation = Tween<double>(begin: 0.88, end: 1.06).animate(
       CurvedAnimation(parent: _playPauseController, curve: Curves.easeOutBack),
     );
   }
@@ -35,12 +35,6 @@ class _FullScreenPlayerState extends State<FullScreenPlayer> with SingleTickerPr
   void dispose() {
     _playPauseController.dispose();
     super.dispose();
-  }
-
-  String _formatDuration(Duration duration) {
-    final minutes = duration.inMinutes;
-    final seconds = duration.inSeconds % 60;
-    return '$minutes:${seconds.toString().padLeft(2, '0')}';
   }
 
   @override
@@ -70,20 +64,23 @@ class _FullScreenPlayerState extends State<FullScreenPlayer> with SingleTickerPr
                       key: ValueKey(currentSong.id),
                       fit: StackFit.expand,
                       children: [
-                        Transform.scale(
-                          scale: 1.4,
-                          child: ArtworkWidget(
-                            songId: currentSong.id,
-                            artworkUrl: currentSong.artwork,
-                            size: double.infinity,
-                            borderRadius: 0,
+                        Opacity(
+                          opacity:isDark ? 0.16 : 0.6,
+                          child: Transform.scale(
+                            scale: 1.2,
+                            child: ArtworkWidget(
+                              songId: currentSong.id,
+                              artworkUrl: currentSong.artwork,
+                              size: double.infinity,
+                              borderRadius: 0,
+                            ),
                           ),
                         ),
                         BackdropFilter(
                           filter: ImageFilter.blur(sigmaX: 60, sigmaY: 60),
                           child: Container(
                             decoration: BoxDecoration(
-                            color: isDark ? Colors.black.withOpacity(0.60) : Colors.white.withOpacity(0.70),
+                            color: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.white.withValues(alpha: 0.70),
                             )
                           ),
                         ),
@@ -128,8 +125,11 @@ class _FullScreenPlayerState extends State<FullScreenPlayer> with SingleTickerPr
                 if (currentSong != null)
                   Obx(() {
                     final isPlaying = audioController.playing.value;
-                    if (isPlaying) _playPauseController.forward();
-                    else _playPauseController.reverse();
+                    if (isPlaying) {
+                      _playPauseController.forward();
+                    } else {
+                      _playPauseController.reverse();
+                    }
         
                     final artSize = MediaQuery.of(context).size.width * 0.80;
         
@@ -144,10 +144,10 @@ class _FullScreenPlayerState extends State<FullScreenPlayer> with SingleTickerPr
                             borderRadius: BorderRadius.circular(20),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(isPlaying ? 0.40 : 0.12),
-                                blurRadius: isPlaying ? 35 : 12,
-                                spreadRadius: isPlaying ? 2 : 0,
-                                offset: Offset(0, isPlaying ? 18 : 6),
+                                color: isDark ? Colors.white.withValues(alpha: isPlaying ? 0.1 : 0.08) : Colors.black.withValues(alpha: isPlaying ? 0.40 : 0.26),
+                                blurRadius: isPlaying ? isDark ? 12 : 18 : isDark ? 8 : 18,
+                                spreadRadius: isPlaying ?  isDark ? 3 : 1 : isDark ? 0 : 0,
+                                offset: Offset(0, isPlaying ? isDark ? 6 : 12 : isDark ? 4 : 12),
                               ),
                             ],
                           ),
@@ -201,45 +201,16 @@ class _FullScreenPlayerState extends State<FullScreenPlayer> with SingleTickerPr
                 const SizedBox(height: 12),
         
                 // iOS Style Slider
-                // iOS / Apple Music style progress slider
-Padding(
-  padding: const EdgeInsets.symmetric(horizontal: 24),
-  child: Column(
-    children: [
-      _ProgressSlider(
-        position: audioController.position.value,
-        total: audioController.totalDuration.value,
-        primaryColor: primaryColor,
-        isDark: isDark,
-        onSeek: (duration) => audioController.seek(duration),
-      ),
-      Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              _formatDuration(audioController.position.value),
-              style: TextStyle(
-                fontSize: 11.5,
-                fontWeight: FontWeight.w500,
-                color: isDark ? Colors.white38 : Colors.black45,
-              ),
-            ),
-            Text(
-              _formatDuration(audioController.totalDuration.value),
-              style: TextStyle(
-                fontSize: 11.5,
-                fontWeight: FontWeight.w500,
-                color: isDark ? Colors.white38 : Colors.black45,
-              ),
-            ),
-          ],
-        ),
-      ),
-    ],
-  ),
-),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: _ProgressSlider(
+                    position: audioController.position.value,
+                    total: audioController.totalDuration.value,
+                    primaryColor: primaryColor,
+                    // isDark: isDark,
+                    onSeek: (duration) => audioController.seek(duration),
+                  ),
+                ),
         
                 const SizedBox(height: 12),
         
@@ -263,11 +234,9 @@ Padding(
                         HapticFeedback.mediumImpact();
                         audioController.playing.value ? audioController.pause() : audioController.play();
                       },
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(color: primaryColor, shape: BoxShape.circle),
-                        child: Icon(audioController.playing.value ? CupertinoIcons.pause_fill : CupertinoIcons.play_fill, color: Colors.white, size: 36),
+                      child: Container(
+                        padding: const EdgeInsets.all(10),
+                        child: Icon(audioController.playing.value ? CupertinoIcons.pause_fill : CupertinoIcons.play_fill, color: isDark ? Colors.white : Colors.black, size: 40),
                       ),
                     ),
                     IconButton(
@@ -324,7 +293,7 @@ Padding(
       context: context,
       barrierDismissible: true,
       barrierLabel: 'Dismiss',
-      barrierColor: Colors.black.withOpacity(0.4),
+      barrierColor: Colors.black.withValues(alpha: 0.4),
       transitionDuration: const Duration(milliseconds: 250),
       pageBuilder: (_, __, ___) => const SizedBox.shrink(),
       transitionBuilder: (context, animation, secondaryAnimation, child) {
@@ -346,9 +315,9 @@ Padding(
                   child: Container(
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF252525).withOpacity(0.85) : Colors.white.withOpacity(0.85),
+                      color: isDark ? const Color(0xFF252525).withValues(alpha: 0.85) : Colors.white.withValues(alpha: 0.85),
                       borderRadius: BorderRadius.circular(22),
-                      border: Border.all(color: isDark ? Colors.white10 : Colors.black.withOpacity(0.05)),
+                      border: Border.all(color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05)),
                     ),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
@@ -407,7 +376,7 @@ Padding(
       context: context,
       barrierDismissible: true,
       barrierLabel: 'Dismiss',
-      barrierColor: Colors.black.withOpacity(0.4),
+      barrierColor: Colors.black.withValues(alpha: 0.4),
       transitionDuration: const Duration(milliseconds: 250),
       pageBuilder: (_, __, ___) => const SizedBox.shrink(),
       transitionBuilder: (context, animation, secondaryAnimation, child) {
@@ -428,9 +397,9 @@ Padding(
                   child: Container(
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF252525).withOpacity(0.85) : Colors.white.withOpacity(0.85),
+                      color: isDark ? const Color(0xFF252525).withValues(alpha: 0.85) : Colors.white.withValues(alpha: 0.85),
                       borderRadius: BorderRadius.circular(22),
-                      border: Border.all(color: isDark ? Colors.white10 : Colors.black.withOpacity(0.05)),
+                      border: Border.all(color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05)),
                     ),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
@@ -486,7 +455,7 @@ Padding(
       context: context,
       barrierDismissible: true,
       barrierLabel: 'Dismiss',
-      barrierColor: Colors.black.withOpacity(0.4),
+      barrierColor: Colors.black.withValues(alpha: 0.4),
       transitionDuration: const Duration(milliseconds: 250),
       pageBuilder: (_, __, ___) => const SizedBox.shrink(),
       transitionBuilder: (context, animation, secondaryAnimation, child) {
@@ -507,9 +476,9 @@ Padding(
                   child: Container(
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF252525).withOpacity(0.85) : Colors.white.withOpacity(0.85),
+                      color: isDark ? const Color(0xFF252525).withValues(alpha: 0.85) : Colors.white.withValues(alpha: 0.85),
                       borderRadius: BorderRadius.circular(22),
-                      border: Border.all(color: isDark ? Colors.white10 : Colors.black.withOpacity(0.05)),
+                      border: Border.all(color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05)),
                     ),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
@@ -615,7 +584,7 @@ class _QueueSheetState extends State<QueueSheet> {
               filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
               child: Container(
                 decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF1C1C1E).withOpacity(0.94) : const Color(0xFFF2F2F7).withOpacity(0.96),
+                  color: isDark ? const Color(0xFF1C1C1E).withValues(alpha: 0.94) : const Color(0xFFF2F2F7).withValues(alpha: 0.96),
                   border: Border(top: BorderSide(color: isDark ? Colors.white12 : Colors.black12, width: 0.5)),
                 ),
                 child: Column(
@@ -670,7 +639,7 @@ class _QueueSheetState extends State<QueueSheet> {
   Widget _buildNowPlayingTile(dynamic song, bool isDark) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-      color: isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.04),
+      color: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.04),
       child: Row(
         children: [
           ClipRRect(borderRadius: BorderRadius.circular(6), child: ArtworkWidget(songId: song.id, artworkUrl: song.artwork, size: 48, borderRadius: 6)),
@@ -787,14 +756,12 @@ class _ProgressSlider extends StatefulWidget {
   final Duration position;
   final Duration total;
   final Color primaryColor;
-  final bool isDark;
   final ValueChanged<Duration> onSeek;
 
   const _ProgressSlider({
     required this.position,
     required this.total,
     required this.primaryColor,
-    required this.isDark,
     required this.onSeek,
   });
 
@@ -802,55 +769,199 @@ class _ProgressSlider extends StatefulWidget {
   State<_ProgressSlider> createState() => _ProgressSliderState();
 }
 
-class _ProgressSliderState extends State<_ProgressSlider> {
+class _ProgressSliderState extends State<_ProgressSlider>
+    with SingleTickerProviderStateMixin {
   bool _dragging = false;
   double _dragValue = 0.0;
 
+  late final AnimationController _interactionController;
+  late final Animation<double> _scaleAnimation;
+  late final Animation<double> _trackHeightAnimation;
+  late final Animation<double> _timeScaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _interactionController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 180),
+    );
+
+    _scaleAnimation = Tween<double>(begin: 1.04, end: 1.065).animate(
+      CurvedAnimation(
+        parent: _interactionController,
+        curve: Curves.easeOutCubic,
+      ),
+    );
+
+    _trackHeightAnimation = Tween<double>(begin: 5.0, end: 7.5).animate(
+      CurvedAnimation(
+        parent: _interactionController,
+        curve: Curves.easeOutCubic,
+      ),
+    );
+
+    _timeScaleAnimation = Tween<double>(begin: 1.0, end: 1.12).animate(
+      CurvedAnimation(
+        parent: _interactionController,
+        curve: Curves.easeOutCubic,
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _interactionController.dispose();
+    super.dispose();
+  }
+
+  void _onInteractionStart(double v) {
+    setState(() {
+      _dragging = true;
+      _dragValue = v;
+    });
+    _interactionController.forward();
+  }
+
+  void _onInteractionEnd(double v) {
+    setState(() {
+      _dragging = false;
+      _dragValue = v;
+    });
+    _interactionController.reverse();
+    widget.onSeek(Duration(milliseconds: v.round()));
+  }
+
+  String _formatDuration(Duration d) {
+    final hours = d.inHours;
+    final minutes = d.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final seconds = d.inSeconds.remainder(60).toString().padLeft(2, '0');
+    if (hours > 0) {
+      return '$hours:$minutes:$seconds';
+    }
+    return '${d.inMinutes}:$seconds';
+  }
+
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     final maxMs = widget.total.inMilliseconds > 0
         ? widget.total.inMilliseconds.toDouble()
         : 1.0;
 
-    final value = _dragging
+    final currentMs = _dragging
         ? _dragValue
         : widget.position.inMilliseconds.toDouble().clamp(0.0, maxMs);
 
-    return SliderTheme(
-      data: SliderTheme.of(context).copyWith(
-        trackHeight: 6.0, // Apple Music thin track
-        thumbShape: const RoundSliderThumbShape(
-          enabledThumbRadius: 0, // subtle, small thumb
-          pressedElevation: 0,
-        ),
-        overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
-        activeTrackColor: widget.primaryColor,
-        inactiveTrackColor: widget.isDark ? Colors.white24 : Colors.black12,
-        thumbColor: Colors.white,
-        overlayColor: widget.primaryColor.withOpacity(0.18),
-        // removes the default “puffy” feel
-        trackShape: const RoundedRectSliderTrackShape(),
-      ),
-      child: Slider(
-        value: value,
-        max: maxMs,
-        onChangeStart: (v) {
-          setState(() {
-            _dragging = true;
-            _dragValue = v;
-          });
-        },
-        onChanged: (v) {
-          setState(() => _dragValue = v);
-        },
-        onChangeEnd: (v) {
-          setState(() {
-            _dragging = false;
-            _dragValue = v;
-          });
-          widget.onSeek(Duration(milliseconds: v.round()));
-        },
-      ),
+    final currentDuration = Duration(milliseconds: currentMs.round());
+    final totalDuration = widget.total;
+
+    return AnimatedBuilder(
+      animation: _interactionController,
+      builder: (context, child) {
+        final isInteracting = _dragging || _interactionController.isAnimating;
+
+        // ── Track colors ──────────────────────────────────────────────
+        final Color activeTrackColor;
+        final Color inactiveTrackColor;
+
+        if (isDark) {
+          activeTrackColor = isInteracting
+              ? Colors.white
+              : Colors.white.withValues(alpha: 0.75);
+          inactiveTrackColor = isInteracting
+              ? Colors.white.withValues(alpha: 0.38)
+              : Colors.white24;
+        } else {
+          // Light mode – darker, more visible tracks
+          activeTrackColor = isInteracting
+              ? Colors.black.withValues(alpha: 0.85)
+              : Colors.black.withValues(alpha: 0.55);
+          inactiveTrackColor = isInteracting
+              ? Colors.black.withValues(alpha: 0.25)
+              : Colors.black12;
+        }
+
+        // ── Time label color ──────────────────────────────────────────
+        final timeColor = isInteracting
+            ? (isDark ? Colors.white : Colors.black)
+            : (isDark
+                ? Colors.white.withValues(alpha: 0.45)
+                : Colors.black.withValues(alpha: 0.45));
+
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Slider
+            Transform.scale(
+              scale: _scaleAnimation.value,
+              alignment: Alignment.center,
+              child: SliderTheme(
+                data: SliderTheme.of(context).copyWith(
+                  trackHeight: _trackHeightAnimation.value,
+                  thumbShape: const RoundSliderThumbShape(
+                    enabledThumbRadius: 0.0,
+                    pressedElevation: 0,
+                  ),
+                  overlayShape: const RoundSliderOverlayShape(overlayRadius: 16),
+                  activeTrackColor: activeTrackColor,
+                  inactiveTrackColor: inactiveTrackColor,
+                  overlayColor: widget.primaryColor.withValues(alpha: 0.18),
+                  trackShape: const RoundedRectSliderTrackShape(),
+                ),
+                child: Slider(
+                  value: currentMs,
+                  max: maxMs,
+                  onChangeStart: _onInteractionStart,
+                  onChanged: (v) {
+                    setState(() => _dragValue = v);
+                  },
+                  onChangeEnd: _onInteractionEnd,
+                ),
+              ),
+            ),
+
+            // Time labels (below)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Transform.scale(
+                    scale: _timeScaleAnimation.value,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      _formatDuration(currentDuration),
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight:
+                            isInteracting ? FontWeight.w600 : FontWeight.w500,
+                        color: timeColor,
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      ),
+                    ),
+                  ),
+                  Transform.scale(
+                    scale: _timeScaleAnimation.value,
+                    alignment: Alignment.centerRight,
+                    child: Text(
+                      _formatDuration(totalDuration),
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight:
+                            isInteracting ? FontWeight.w600 : FontWeight.w500,
+                        color: timeColor,
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }
