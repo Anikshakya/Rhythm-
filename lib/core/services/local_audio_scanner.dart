@@ -9,36 +9,71 @@ class LocalAudioScanner {
 
   Future<bool> checkAndRequestPermissions() async {
     try {
-      bool status = await _audioQuery.permissionsStatus();
-      if (!status) {
-        status = await _audioQuery.permissionsRequest();
+      final bool status = await _audioQuery.checkAndRequest(retryRequest: true);
+      debugPrint('LocalAudioScanner: on_audio_query checkAndRequest=$status');
+      if (status) {
+        return true;
       }
 
-      if (!status) {
-        status = await _requestPlatformPermissions();
+      final bool hasQueryPermission = await _audioQuery.permissionsStatus();
+      debugPrint('LocalAudioScanner: on_audio_query permissionsStatus=$hasQueryPermission');
+      if (hasQueryPermission) {
+        return true;
       }
 
-      return status;
+      final bool requestedQueryPermission = await _audioQuery.permissionsRequest(retryRequest: true);
+      debugPrint('LocalAudioScanner: on_audio_query permissionsRequest=$requestedQueryPermission');
+      if (requestedQueryPermission) {
+        return true;
+      }
+
+      if (await _requestPlatformPermissions()) {
+        debugPrint('LocalAudioScanner: permission_handler fallback granted');
+        return true;
+      }
+
+      debugPrint('LocalAudioScanner: permissions denied after both plugin and fallback');
+      return false;
     } catch (e) {
       debugPrint('Permission error: $e');
       return false;
     }
   }
 
+  Future<bool> _hasPlatformPermissions() async {
+    if (Platform.isIOS) {
+      final status = await Permission.mediaLibrary.status;
+      return status.isGranted || status.isLimited;
+    }
+
+    if (Platform.isAndroid) {
+      final storageStatus = await Permission.storage.status;
+      final audioStatus = await Permission.audio.status;
+      final mediaLocationStatus = await Permission.accessMediaLocation.status;
+
+      return storageStatus.isGranted || audioStatus.isGranted ||
+          mediaLocationStatus.isGranted;
+    }
+
+    return true;
+  }
+
   Future<bool> _requestPlatformPermissions() async {
     if (Platform.isIOS) {
       final status = await Permission.mediaLibrary.request();
-      return status.isGranted;
+      return status.isGranted || status.isLimited;
     }
 
     if (Platform.isAndroid) {
       final statuses = await [
         Permission.storage,
         Permission.audio,
+        Permission.accessMediaLocation,
       ].request();
 
       return statuses[Permission.storage]?.isGranted == true ||
-          statuses[Permission.audio]?.isGranted == true;
+          statuses[Permission.audio]?.isGranted == true ||
+          statuses[Permission.accessMediaLocation]?.isGranted == true;
     }
 
     return true;
