@@ -20,6 +20,9 @@ class _FullScreenPlayerState extends State<FullScreenPlayer>
   late AnimationController _playPauseController;
   late Animation<double> _scaleAnimation;
 
+  // Tracks the last song so we can detect changes
+  String? _lastSongId;
+
   @override
   void initState() {
     super.initState();
@@ -30,6 +33,9 @@ class _FullScreenPlayerState extends State<FullScreenPlayer>
     _scaleAnimation = Tween<double>(begin: 0.88, end: 1.06).animate(
       CurvedAnimation(parent: _playPauseController, curve: Curves.easeOutBack),
     );
+
+    // Start from the "paused" scale so the first appearance also bounces
+    _playPauseController.value = 0.0;
   }
 
   @override
@@ -47,6 +53,15 @@ class _FullScreenPlayerState extends State<FullScreenPlayer>
     return '$minutes:$seconds';
   }
 
+  /// Triggers the same scale bounce used by play/pause
+  void _triggerArtworkBounce({required bool isPlaying}) {
+    if (isPlaying) {
+      _playPauseController.forward(from: 0.0);
+    } else {
+      _playPauseController.reverse(from: 1.0);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final audioController = Get.find<AudioController>();
@@ -57,6 +72,26 @@ class _FullScreenPlayerState extends State<FullScreenPlayer>
 
     return Obx(() {
       final currentSong = audioController.currentSong.value;
+      final isPlaying = audioController.playing.value;
+
+      // ── Detect song change (next / previous / open) ──────────────────────
+      final currentId = currentSong?.id;
+      if (currentId != null && currentId != _lastSongId) {
+        _lastSongId = currentId;
+        // Run after the current frame so AnimatedSwitcher has already swapped
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            _triggerArtworkBounce(isPlaying: isPlaying);
+          }
+        });
+      } else {
+        // Normal play/pause (no song change)
+        if (isPlaying) {
+          _playPauseController.forward();
+        } else {
+          _playPauseController.reverse();
+        }
+      }
 
       return Scaffold(
         extendBodyBehindAppBar: true,
@@ -161,71 +196,60 @@ class _FullScreenPlayerState extends State<FullScreenPlayer>
 
                 // Artwork
                 if (currentSong != null)
-                  Obx(() {
-                    final isPlaying = audioController.playing.value;
-                    if (isPlaying) {
-                      _playPauseController.forward();
-                    } else {
-                      _playPauseController.reverse();
-                    }
-
-                    final artSize = MediaQuery.of(context).size.width * 0.80;
-
-                    return Center(
-                      child: AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 420),
-                        switchInCurve: Curves.easeOutQuart,
-                        switchOutCurve: Curves.easeInQuart,
-                        transitionBuilder: (child, animation) {
-                          return FadeTransition(
-                            opacity: animation,
-                            child: ScaleTransition(
-                              scale: Tween<double>(begin: 0.96, end: 1.0)
-                                  .animate(animation),
-                              child: child,
-                            ),
-                          );
-                        },
-                        child: SizedBox(
-                          key: ValueKey(currentSong.id),
-                          width: artSize,
-                          height: artSize,
+                  Center(
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 420),
+                      switchInCurve: Curves.easeOutQuart,
+                      switchOutCurve: Curves.easeInQuart,
+                      transitionBuilder: (child, animation) {
+                        return FadeTransition(
+                          opacity: animation,
                           child: ScaleTransition(
-                            scale: _scaleAnimation,
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 350),
-                              width: artSize,
-                              height: artSize,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(20),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: isDark
-                                        ? Colors.white.withValues(
-                                            alpha: isPlaying ? 0.15 : 0.12)
-                                        : Colors.black.withValues(
-                                            alpha: isPlaying ? 0.2 : 0.2),
-                                    blurRadius: 12,
-                                    spreadRadius: isPlaying ? 6 : 2,
-                                    offset: Offset(0, isPlaying ? 4 : 2),
-                                  ),
-                                ],
-                              ),
-                              child: Hero(
-                                tag: 'artwork_${currentSong.id}',
-                                child: ArtworkWidget(
-                                  songId: currentSong.id,
-                                  artworkUrl: currentSong.artwork,
-                                  size: artSize,
-                                  borderRadius: 20,
+                            scale: Tween<double>(begin: 0.96, end: 1.0)
+                                .animate(animation),
+                            child: child,
+                          ),
+                        );
+                      },
+                      child: SizedBox(
+                        key: ValueKey(currentSong.id),
+                        width: MediaQuery.of(context).size.width * 0.80,
+                        height: MediaQuery.of(context).size.width * 0.80,
+                        child: ScaleTransition(
+                          scale: _scaleAnimation,
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 350),
+                            width: MediaQuery.of(context).size.width * 0.80,
+                            height: MediaQuery.of(context).size.width * 0.80,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(20),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: isDark
+                                      ? Colors.white.withValues(
+                                          alpha: isPlaying ? 0.15 : 0.12)
+                                      : Colors.black.withValues(
+                                          alpha: isPlaying ? 0.2 : 0.2),
+                                  blurRadius: 12,
+                                  spreadRadius: isPlaying ? 6 : 2,
+                                  offset: Offset(0, isPlaying ? 4 : 2),
                                 ),
+                              ],
+                            ),
+                            child: Hero(
+                              tag: 'artwork_${currentSong.id}',
+                              child: ArtworkWidget(
+                                songId: currentSong.id,
+                                artworkUrl: currentSong.artwork,
+                                size: MediaQuery.of(context).size.width * 0.80,
+                                borderRadius: 20,
                               ),
                             ),
                           ),
                         ),
                       ),
-                    );
-                  }),
+                    ),
+                  ),
 
                 const Spacer(),
 
@@ -427,8 +451,9 @@ class _FullScreenPlayerState extends State<FullScreenPlayer>
 
                       // ── Sleep Timer + Countdown ─────────────────────
                       Obx(() {
-                        final remaining = audioController.sleepTimer.value;   // ← changed here
-                        final isActive = remaining != null && remaining > Duration.zero;
+                        final remaining = audioController.sleepTimer.value;
+                        final isActive =
+                            remaining != null && remaining > Duration.zero;
                         return GestureDetector(
                           onTap: () => _showIosSleepTimerDialog(
                               context, audioController, primaryColor),
@@ -449,11 +474,14 @@ class _FullScreenPlayerState extends State<FullScreenPlayer>
                                     : 'Timer',
                                 style: TextStyle(
                                   fontSize: 10,
-                                  fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
+                                  fontWeight:
+                                      isActive ? FontWeight.w600 : FontWeight.w500,
                                   color: isActive
                                       ? primaryColor
                                       : (isDark ? Colors.white54 : Colors.black45),
-                                  fontFeatures: const [FontFeature.tabularFigures()],
+                                  fontFeatures: const [
+                                    FontFeature.tabularFigures()
+                                  ],
                                 ),
                               ),
                             ],
