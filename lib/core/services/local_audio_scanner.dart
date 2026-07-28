@@ -7,32 +7,27 @@ import '../models/song_model.dart';
 class LocalAudioScanner {
   final OnAudioQuery _audioQuery = OnAudioQuery();
 
+  /// Checks and requests necessary storage/audio permissions based on the platform.
   Future<bool> checkAndRequestPermissions() async {
     try {
+      // 1. Check if we already have platform-level permissions
+      if (await _hasPlatformPermissions()) {
+        debugPrint('LocalAudioScanner: Platform permissions already granted.');
+        return true;
+      }
+
+      // 2. Try on_audio_query built-in check
       final bool status = await _audioQuery.checkAndRequest(retryRequest: true);
-      debugPrint('LocalAudioScanner: on_audio_query checkAndRequest=$status');
-      if (status) {
-        return true;
-      }
+      debugPrint('LocalAudioScanner: on_audio_query checkAndRequest = $status');
+      if (status) return true;
 
-      final bool hasQueryPermission = await _audioQuery.permissionsStatus();
-      debugPrint('LocalAudioScanner: on_audio_query permissionsStatus=$hasQueryPermission');
-      if (hasQueryPermission) {
-        return true;
-      }
-
-      final bool requestedQueryPermission = await _audioQuery.permissionsRequest(retryRequest: true);
-      debugPrint('LocalAudioScanner: on_audio_query permissionsRequest=$requestedQueryPermission');
-      if (requestedQueryPermission) {
-        return true;
-      }
-
+      // 3. Try fallback via permission_handler
       if (await _requestPlatformPermissions()) {
-        debugPrint('LocalAudioScanner: permission_handler fallback granted');
+        debugPrint('LocalAudioScanner: permission_handler fallback granted.');
         return true;
       }
 
-      debugPrint('LocalAudioScanner: permissions denied after both plugin and fallback');
+      debugPrint('LocalAudioScanner: Permissions denied after all attempts.');
       return false;
     } catch (e) {
       debugPrint('Permission error: $e');
@@ -40,6 +35,7 @@ class LocalAudioScanner {
     }
   }
 
+  /// Verifies platform-specific permissions without triggering prompts.
   Future<bool> _hasPlatformPermissions() async {
     if (Platform.isIOS) {
       final status = await Permission.mediaLibrary.status;
@@ -47,17 +43,17 @@ class LocalAudioScanner {
     }
 
     if (Platform.isAndroid) {
-      final storageStatus = await Permission.storage.status;
+      // Android 13+ uses Permission.audio; older versions use Permission.storage
       final audioStatus = await Permission.audio.status;
-      final mediaLocationStatus = await Permission.accessMediaLocation.status;
+      final storageStatus = await Permission.storage.status;
 
-      return storageStatus.isGranted || audioStatus.isGranted ||
-          mediaLocationStatus.isGranted;
+      return audioStatus.isGranted || storageStatus.isGranted;
     }
 
     return true;
   }
 
+  /// Requests appropriate platform-specific permissions dynamically.
   Future<bool> _requestPlatformPermissions() async {
     if (Platform.isIOS) {
       final status = await Permission.mediaLibrary.request();
@@ -65,20 +61,22 @@ class LocalAudioScanner {
     }
 
     if (Platform.isAndroid) {
+      // Determine SDK version or request both modern and legacy permissions safely.
+      // On Android 13+, requesting storage will return denied/restricted, 
+      // while Permission.audio will prompt the user correctly.
       final statuses = await [
-        Permission.storage,
         Permission.audio,
-        Permission.accessMediaLocation,
+        Permission.storage,
       ].request();
 
-      return statuses[Permission.storage]?.isGranted == true ||
-          statuses[Permission.audio]?.isGranted == true ||
-          statuses[Permission.accessMediaLocation]?.isGranted == true;
+      return statuses[Permission.audio]?.isGranted == true ||
+          statuses[Permission.storage]?.isGranted == true;
     }
 
     return true;
   }
 
+  /// Scans device local storage for audio files and maps them to [Song] models.
   Future<List<Song>> scanLocalSongs() async {
     try {
       final hasPermission = await checkAndRequestPermissions();
@@ -87,6 +85,7 @@ class LocalAudioScanner {
         return [];
       }
 
+      // Query songs from external storage
       final songModels = await _audioQuery.querySongs(
         sortType: SongSortType.DATE_ADDED,
         orderType: OrderType.DESC_OR_GREATER,
@@ -98,9 +97,22 @@ class LocalAudioScanner {
       for (var s in songModels) {
         if (s.data.isEmpty) continue;
 
-        String artworkUri = '';
-        if (s.albumId != null) {
-          artworkUri = 'content://media/external/audio/albumart/${s.albumId}';
+        // Build artwork URI safely if albumId exists
+        final String artworkUri = s.albumId != null
+            ? 'content://media/external/audio/albumart/${s.albumId}'
+            : '';
+
+        // Extract year safely from map if available
+        int? parsedYear;
+        try {
+          final yearVal = s.getMap['year'];
+          if (yearVal is int) {
+            parsedYear = yearVal;
+          } else if (yearVal is String) {
+            parsedYear = int.tryParse(yearVal);
+          }
+        } catch (_) {
+          parsedYear = null;
         }
 
         songs.add(
@@ -115,11 +127,12 @@ class LocalAudioScanner {
             uri: s.data,
             localPath: s.data,
             genre: s.genre,
-            year: s.getMap['year'] is int ? s.getMap['year'] : null,
+            year: parsedYear,
           ),
         );
       }
 
+      debugPrint('✅ Successfully scanned ${songs.length} local songs.');
       return songs;
     } catch (e) {
       debugPrint('❌ Error scanning local songs: $e');
@@ -127,38 +140,29 @@ class LocalAudioScanner {
     }
   }
 
+  /// Groups a list of songs by their Album name.
   Map<String, List<Song>> groupByAlbum(List<Song> songs) {
-    final Map<String, List<Song>> albums = {};
-    for (var song in songs) {
-      final albumName = song.album.isEmpty ? 'Unknown Album' : song.album;
-      albums.putIfAbsent(albumName, () => []).add(song);
-    }
-    return albums;
+    return groupByProperty(songs, (song) => song.album.isEmpty ? 'Unknown Album' : song.album);
   }
 
+  /// Groups a list of songs by their Artist name.
   Map<String, List<Song>> groupByArtist(List<Song> songs) {
-    final Map<String, List<Song>> artists = {};
-    for (var song in songs) {
-      final artistName = song.artist.isEmpty ? 'Unknown Artist' : song.artist;
-      artists.putIfAbsent(artistName, () => []).add(song);
-    }
-    return artists;
+    return groupByProperty(songs, (song) => song.artist.isEmpty ? 'Unknown Artist' : song.artist);
   }
 
+  /// Groups a list of songs by their Genre.
   Map<String, List<Song>> groupByGenre(List<Song> songs) {
-    final Map<String, List<Song>> genres = {};
-    for (var song in songs) {
-      final genreName = (song.genre == null || song.genre!.isEmpty) ? 'Unknown Genre' : song.genre!;
-      genres.putIfAbsent(genreName, () => []).add(song);
-    }
-    return genres;
+    return groupByProperty(songs, (song) => (song.genre == null || song.genre!.isEmpty) ? 'Unknown Genre' : song.genre!);
   }
 
+  /// Groups a list of songs by their parent folder name.
   Map<String, List<Song>> groupByFolder(List<Song> songs) {
     final Map<String, List<Song>> folders = {};
     for (var song in songs) {
-      if (song.localPath != null) {
-        final parts = song.localPath!.split('/');
+      if (song.localPath != null && song.localPath!.isNotEmpty) {
+        // Cross-platform path separation safeguard
+        final normalizedPath = song.localPath!.replaceAll('\\', '/');
+        final parts = normalizedPath.split('/');
         final folderName = parts.length > 1 ? parts[parts.length - 2] : 'Root';
         folders.putIfAbsent(folderName, () => []).add(song);
       } else {
@@ -166,5 +170,15 @@ class LocalAudioScanner {
       }
     }
     return folders;
+  }
+
+  /// Helper utility to DRY (Don't Repeat Yourself) up grouping logic.
+  Map<String, List<Song>> groupByProperty(List<Song> songs, String Function(Song) keySelector) {
+    final Map<String, List<Song>> groupedMap = {};
+    for (var song in songs) {
+      final key = keySelector(song);
+      groupedMap.putIfAbsent(key, () => []).add(song);
+    }
+    return groupedMap;
   }
 }
