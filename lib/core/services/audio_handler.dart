@@ -40,6 +40,8 @@ class RhythmAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler
   final ConcatenatingAudioSource _playlist = ConcatenatingAudioSource(children: []);
   final List<Song> _rawQueue = [];
 
+  bool _isUpdatingQueue = false;
+
   Timer? _sleepTimer;
   final _sleepTimerSubject = BehaviorSubject<Duration?>.seeded(null);
   Stream<Duration?> get sleepTimerStream => _sleepTimerSubject.stream;
@@ -67,6 +69,8 @@ class RhythmAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler
     });
 
     _player.currentIndexStream.listen((index) {
+      if (_isUpdatingQueue) return;
+
       if (index != null && index >= 0 && index < _rawQueue.length) {
         final currentSong = _rawQueue[index];
         _currentSongSubject.add(currentSong);
@@ -146,19 +150,24 @@ class RhythmAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler
   Future<void> setQueue(List<Song> songs, {int initialIndex = 0}) async {
     if (songs.isEmpty) return;
 
+    _isUpdatingQueue = true;
     _rawQueue.clear();
     _rawQueue.addAll(songs);
 
     final mediaItems = songs.map((s) => s.toMediaItem()).toList();
     queue.add(mediaItems);
 
+    final validIndex = initialIndex.clamp(0, songs.length - 1);
+    final selectedSong = _rawQueue[validIndex];
+    _currentSongSubject.add(selectedSong);
+    mediaItem.add(selectedSong.toMediaItem());
+
     final sources = songs.map((s) => s.toAudioSource()).toList();
     await _playlist.clear();
     await _playlist.addAll(sources);
-
-    final validIndex = initialIndex.clamp(0, songs.length - 1);
     await _player.seek(Duration.zero, index: validIndex);
     await _player.play();
+    _isUpdatingQueue = false;
 
     _persistSession();
   }

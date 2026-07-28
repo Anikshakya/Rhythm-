@@ -15,7 +15,8 @@ class FullScreenPlayer extends StatefulWidget {
   State<FullScreenPlayer> createState() => _FullScreenPlayerState();
 }
 
-class _FullScreenPlayerState extends State<FullScreenPlayer> with SingleTickerProviderStateMixin {
+class _FullScreenPlayerState extends State<FullScreenPlayer>
+    with SingleTickerProviderStateMixin {
   late AnimationController _playPauseController;
   late Animation<double> _scaleAnimation;
 
@@ -37,17 +38,26 @@ class _FullScreenPlayerState extends State<FullScreenPlayer> with SingleTickerPr
     super.dispose();
   }
 
+  String _formatCountdown(Duration d) {
+    final minutes = d.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final seconds = d.inSeconds.remainder(60).toString().padLeft(2, '0');
+    if (d.inHours > 0) {
+      return '${d.inHours}:$minutes:$seconds';
+    }
+    return '$minutes:$seconds';
+  }
+
   @override
   Widget build(BuildContext context) {
     final audioController = Get.find<AudioController>();
     final favoritesController = Get.find<FavoritesController>();
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final primaryColor = theme.colorScheme.primary; // Theme-aware accent color
+    final primaryColor = theme.colorScheme.primary;
 
     return Obx(() {
       final currentSong = audioController.currentSong.value;
-        
+
       return Scaffold(
         extendBodyBehindAppBar: true,
         backgroundColor: isDark ? Colors.black : const Color(0xFFF2F2F7),
@@ -71,7 +81,6 @@ class _FullScreenPlayerState extends State<FullScreenPlayer> with SingleTickerPr
                             child: ArtworkWidget(
                               songId: currentSong.id,
                               artworkUrl: currentSong.artwork,
-                              // size: MediaQuery.of(context).size.width * 20,
                               borderRadius: 0,
                             ),
                           ),
@@ -80,8 +89,8 @@ class _FullScreenPlayerState extends State<FullScreenPlayer> with SingleTickerPr
                           filter: ImageFilter.blur(sigmaX: 60, sigmaY: 60),
                           child: Container(
                             decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.06),
-                            )
+                              color: Colors.white.withValues(alpha: 0.06),
+                            ),
                           ),
                         ),
                       ],
@@ -89,12 +98,11 @@ class _FullScreenPlayerState extends State<FullScreenPlayer> with SingleTickerPr
                   ),
                 ),
               ),
-        
-            
+
             Column(
               children: [
                 const SizedBox(height: 18),
-        
+
                 // Header
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -102,26 +110,55 @@ class _FullScreenPlayerState extends State<FullScreenPlayer> with SingleTickerPr
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       IconButton(
-                        icon: Icon(CupertinoIcons.chevron_down, size: 22, color: isDark ? Colors.white70 : Colors.black87),
+                        icon: Icon(
+                          CupertinoIcons.chevron_down,
+                          size: 22,
+                          color: isDark ? Colors.white70 : Colors.black87,
+                        ),
                         onPressed: () => Navigator.of(context).pop(),
                       ),
                       Column(
                         children: [
-                          Text('PLAYING FROM QUEUE', style: TextStyle(fontSize: 9.5, letterSpacing: 1.5, fontWeight: FontWeight.bold, color: isDark ? Colors.white38 : Colors.black45)),
+                          Text(
+                            'PLAYING FROM QUEUE',
+                            style: TextStyle(
+                              fontSize: 9.5,
+                              letterSpacing: 1.5,
+                              fontWeight: FontWeight.bold,
+                              color: isDark ? Colors.white38 : Colors.black45,
+                            ),
+                          ),
                           const SizedBox(height: 2),
-                          Text(currentSong?.album ?? 'Rhythm', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: isDark ? Colors.white : Colors.black)),
+                          Text(
+                            currentSong?.album ?? 'Rhythm',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: isDark ? Colors.white : Colors.black,
+                            ),
+                          ),
                         ],
                       ),
                       IconButton(
-                        icon: Icon(CupertinoIcons.ellipsis, size: 22, color: isDark ? Colors.white70 : Colors.black87),
-                        onPressed: () => _showIosOptionsDialog(context, audioController, favoritesController, currentSong, primaryColor),
+                        icon: Icon(
+                          CupertinoIcons.ellipsis,
+                          size: 22,
+                          color: isDark ? Colors.white70 : Colors.black87,
+                        ),
+                        onPressed: () => _showIosOptionsDialog(
+                          context,
+                          audioController,
+                          favoritesController,
+                          currentSong,
+                          primaryColor,
+                        ),
                       ),
                     ],
                   ),
                 ),
-        
+
                 const Spacer(),
-        
+
                 // Artwork
                 if (currentSong != null)
                   Obx(() {
@@ -131,76 +168,130 @@ class _FullScreenPlayerState extends State<FullScreenPlayer> with SingleTickerPr
                     } else {
                       _playPauseController.reverse();
                     }
-        
+
                     final artSize = MediaQuery.of(context).size.width * 0.80;
-        
+
                     return Center(
-                      child: ScaleTransition(
-                        scale: _scaleAnimation,
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 350),
+                      child: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 420),
+                        switchInCurve: Curves.easeOutQuart,
+                        switchOutCurve: Curves.easeInQuart,
+                        transitionBuilder: (child, animation) {
+                          return FadeTransition(
+                            opacity: animation,
+                            child: ScaleTransition(
+                              scale: Tween<double>(begin: 0.96, end: 1.0)
+                                  .animate(animation),
+                              child: child,
+                            ),
+                          );
+                        },
+                        child: SizedBox(
+                          key: ValueKey(currentSong.id),
                           width: artSize,
                           height: artSize,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(20),
-                            boxShadow: [
-                              BoxShadow(
-                                color: isDark ? Colors.white.withValues(alpha: isPlaying ? 0.15 : 0.12) : Colors.black.withValues(alpha: isPlaying ? 0.2 : 0.2),
-                                blurRadius: 12,
-                                spreadRadius: isPlaying ? 6 : 2,
-                                offset: Offset(0, isPlaying ? 4 : 2),
+                          child: ScaleTransition(
+                            scale: _scaleAnimation,
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 350),
+                              width: artSize,
+                              height: artSize,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(20),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: isDark
+                                        ? Colors.white.withValues(
+                                            alpha: isPlaying ? 0.15 : 0.12)
+                                        : Colors.black.withValues(
+                                            alpha: isPlaying ? 0.2 : 0.2),
+                                    blurRadius: 12,
+                                    spreadRadius: isPlaying ? 6 : 2,
+                                    offset: Offset(0, isPlaying ? 4 : 2),
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
-                          child: Hero(
-                            tag: 'artwork_${currentSong.id}',
-                            child: ArtworkWidget(
-                              songId: currentSong.id,
-                              artworkUrl: currentSong.artwork,
-                              size: artSize,
-                              borderRadius: 20,
+                              child: Hero(
+                                tag: 'artwork_${currentSong.id}',
+                                child: ArtworkWidget(
+                                  songId: currentSong.id,
+                                  artworkUrl: currentSong.artwork,
+                                  size: artSize,
+                                  borderRadius: 20,
+                                ),
+                              ),
                             ),
                           ),
                         ),
                       ),
                     );
                   }),
-        
+
                 const Spacer(),
-        
+
                 // Song Info + Favorite
                 if (currentSong != null)
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 28),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(currentSong.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, letterSpacing: -0.5, color: isDark ? Colors.white : Colors.black)),
-                              const SizedBox(height: 2),
-                              Text(currentSong.artist, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: isDark ? Colors.white60 : Colors.black54)),
-                            ],
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 420),
+                      switchInCurve: Curves.easeOutQuart,
+                      switchOutCurve: Curves.easeInQuart,
+                      child: Row(
+                        key: ValueKey(currentSong.id),
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  currentSong.title,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: -0.5,
+                                    color: isDark ? Colors.white : Colors.black,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  currentSong.artist,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w500,
+                                    color:
+                                        isDark ? Colors.white60 : Colors.black54,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                        IconButton(
-                          icon: Icon(
-                            favoritesController.isFavorite(currentSong.id) ? CupertinoIcons.heart_fill : CupertinoIcons.heart,
-                            color: favoritesController.isFavorite(currentSong.id) ? primaryColor : (isDark ? Colors.white38 : Colors.black38),
-                            size: 24,
+                          IconButton(
+                            icon: Icon(
+                              favoritesController.isFavorite(currentSong.id)
+                                  ? CupertinoIcons.heart_fill
+                                  : CupertinoIcons.heart,
+                              color: favoritesController.isFavorite(currentSong.id)
+                                  ? primaryColor
+                                  : (isDark ? Colors.white38 : Colors.black38),
+                              size: 24,
+                            ),
+                            onPressed: () {
+                              HapticFeedback.mediumImpact();
+                              favoritesController.toggleFavoriteSong(currentSong);
+                            },
                           ),
-                          onPressed: () {
-                            HapticFeedback.mediumImpact();
-                            favoritesController.toggleFavoriteSong(currentSong);
-                          },
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
-        
+
                 const SizedBox(height: 12),
-        
+
                 // iOS Style Slider
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -208,46 +299,74 @@ class _FullScreenPlayerState extends State<FullScreenPlayer> with SingleTickerPr
                     position: audioController.position.value,
                     total: audioController.totalDuration.value,
                     primaryColor: primaryColor,
-                    // isDark: isDark,
                     onSeek: (duration) => audioController.seek(duration),
                   ),
                 ),
-        
+
                 const SizedBox(height: 12),
-        
+
                 // Controls
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
                     IconButton(
-                      icon: Icon(CupertinoIcons.shuffle, color: audioController.shuffleMode.value == AudioServiceShuffleMode.all ? primaryColor : (isDark ? Colors.white38 : Colors.black38), size: 20),
+                      icon: Icon(
+                        CupertinoIcons.shuffle,
+                        color: audioController.shuffleMode.value ==
+                                AudioServiceShuffleMode.all
+                            ? primaryColor
+                            : (isDark ? Colors.white38 : Colors.black38),
+                        size: 20,
+                      ),
                       onPressed: () {
                         HapticFeedback.selectionClick();
                         audioController.toggleShuffle();
                       },
                     ),
                     IconButton(
-                      icon: Icon(CupertinoIcons.backward_fill, size: 34, color: isDark ? Colors.white : Colors.black),
+                      icon: Icon(
+                        CupertinoIcons.backward_fill,
+                        size: 34,
+                        color: isDark ? Colors.white : Colors.black,
+                      ),
                       onPressed: () => audioController.previous(),
                     ),
                     GestureDetector(
                       onTap: () {
                         HapticFeedback.mediumImpact();
-                        audioController.playing.value ? audioController.pause() : audioController.play();
+                        audioController.playing.value
+                            ? audioController.pause()
+                            : audioController.play();
                       },
                       child: Container(
                         padding: const EdgeInsets.all(10),
-                        child: Icon(audioController.playing.value ? CupertinoIcons.pause_fill : CupertinoIcons.play_fill, color: isDark ? Colors.white : Colors.black, size: 40),
+                        child: Icon(
+                          audioController.playing.value
+                              ? CupertinoIcons.pause_fill
+                              : CupertinoIcons.play_fill,
+                          color: isDark ? Colors.white : Colors.black,
+                          size: 40,
+                        ),
                       ),
                     ),
                     IconButton(
-                      icon: Icon(CupertinoIcons.forward_fill, size: 34, color: isDark ? Colors.white : Colors.black),
+                      icon: Icon(
+                        CupertinoIcons.forward_fill,
+                        size: 34,
+                        color: isDark ? Colors.white : Colors.black,
+                      ),
                       onPressed: () => audioController.next(),
                     ),
                     IconButton(
                       icon: Icon(
-                        audioController.repeatMode.value == AudioServiceRepeatMode.one ? CupertinoIcons.repeat_1 : CupertinoIcons.repeat,
-                        color: audioController.repeatMode.value != AudioServiceRepeatMode.none ? primaryColor : (isDark ? Colors.white38 : Colors.black38),
+                        audioController.repeatMode.value ==
+                                AudioServiceRepeatMode.one
+                            ? CupertinoIcons.repeat_1
+                            : CupertinoIcons.repeat,
+                        color: audioController.repeatMode.value !=
+                                AudioServiceRepeatMode.none
+                            ? primaryColor
+                            : (isDark ? Colors.white38 : Colors.black38),
                         size: 20,
                       ),
                       onPressed: () {
@@ -257,20 +376,104 @@ class _FullScreenPlayerState extends State<FullScreenPlayer> with SingleTickerPr
                     ),
                   ],
                 ),
-        
+
                 const Spacer(),
-        
-                // Bottom Toolbar
+
+                // Bottom Toolbar – with speed + sleep countdown
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 40, vertical: 8),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      IconButton(icon: Icon(CupertinoIcons.speedometer, color: isDark ? Colors.white54 : Colors.black45, size: 21), onPressed: () => _showIosSpeedDialog(context, audioController, primaryColor)),
-                      IconButton(icon: Icon(CupertinoIcons.timer, color: isDark ? Colors.white54 : Colors.black45, size: 21), onPressed: () => _showIosSleepTimerDialog(context, audioController, primaryColor)),
+                      // ── Playback Speed ──────────────────────────────
+                      Obx(() {
+                        final speed = audioController.speed.value;
+                        final isCustom = speed != 1.0;
+                        return GestureDetector(
+                          onTap: () => _showIosSpeedDialog(
+                              context, audioController, primaryColor),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                CupertinoIcons.speedometer,
+                                color: isCustom
+                                    ? primaryColor
+                                    : (isDark
+                                        ? Colors.white54
+                                        : Colors.black45),
+                                size: 21,
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                isCustom ? '${speed}x' : 'Speed',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: isCustom
+                                      ? FontWeight.w600
+                                      : FontWeight.w500,
+                                  color: isCustom
+                                      ? primaryColor
+                                      : (isDark
+                                          ? Colors.white54
+                                          : Colors.black45),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }),
+
+                      // ── Sleep Timer + Countdown ─────────────────────
+                      Obx(() {
+                        final remaining = audioController.sleepTimer.value;   // ← changed here
+                        final isActive = remaining != null && remaining > Duration.zero;
+                        return GestureDetector(
+                          onTap: () => _showIosSleepTimerDialog(
+                              context, audioController, primaryColor),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                CupertinoIcons.timer,
+                                color: isActive
+                                    ? primaryColor
+                                    : (isDark ? Colors.white54 : Colors.black45),
+                                size: 21,
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                isActive
+                                    ? _formatCountdown(remaining)
+                                    : 'Timer',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
+                                  color: isActive
+                                      ? primaryColor
+                                      : (isDark ? Colors.white54 : Colors.black45),
+                                  fontFeatures: const [FontFeature.tabularFigures()],
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }),
+
+                      // ── Queue ───────────────────────────────────────
                       IconButton(
-                        icon: Icon(CupertinoIcons.list_bullet, color: isDark ? Colors.white70 : Colors.black87, size: 22),
-                        onPressed: () => showModalBottomSheet(context: context, isScrollControlled: true, backgroundColor: Colors.transparent, builder: (_) => const QueueSheet()),
+                        icon: Icon(
+                          CupertinoIcons.list_bullet,
+                          color: isDark ? Colors.white70 : Colors.black87,
+                          size: 22,
+                        ),
+                        onPressed: () => showModalBottomSheet(
+                          context: context,
+                          isScrollControlled: true,
+                          backgroundColor: Colors.transparent,
+                          builder: (_) => const QueueSheet(),
+                        ),
                       ),
                     ],
                   ),
@@ -286,7 +489,13 @@ class _FullScreenPlayerState extends State<FullScreenPlayer> with SingleTickerPr
 
   // ==================== Dialogs ====================
 
-  void _showIosOptionsDialog(BuildContext context, AudioController controller, FavoritesController favs, dynamic song, Color primaryColor) {
+  void _showIosOptionsDialog(
+    BuildContext context,
+    AudioController controller,
+    FavoritesController favs,
+    dynamic song,
+    Color primaryColor,
+  ) {
     if (song == null) return;
     HapticFeedback.mediumImpact();
 
@@ -298,7 +507,8 @@ class _FullScreenPlayerState extends State<FullScreenPlayer> with SingleTickerPr
       transitionDuration: const Duration(milliseconds: 250),
       pageBuilder: (_, __, ___) => const SizedBox.shrink(),
       transitionBuilder: (context, animation, secondaryAnimation, child) {
-        final curve = CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
+        final curve =
+            CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
         final isDark = Theme.of(context).brightness == Brightness.dark;
         final isFav = favs.isFavorite(song.id);
 
@@ -316,39 +526,94 @@ class _FullScreenPlayerState extends State<FullScreenPlayer> with SingleTickerPr
                   child: Container(
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF252525).withValues(alpha: 0.85) : Colors.white.withValues(alpha: 0.85),
+                      color: isDark
+                          ? const Color(0xFF252525).withValues(alpha: 0.85)
+                          : Colors.white.withValues(alpha: 0.85),
                       borderRadius: BorderRadius.circular(22),
-                      border: Border.all(color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05)),
+                      border: Border.all(
+                        color: isDark
+                            ? Colors.white10
+                            : Colors.black.withValues(alpha: 0.05),
+                      ),
                     ),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Row(
                           children: [
-                            ArtworkWidget(songId: song.id, artworkUrl: song.artwork, size: 48, borderRadius: 10),
+                            ArtworkWidget(
+                              songId: song.id,
+                              artworkUrl: song.artwork,
+                              size: 48,
+                              borderRadius: 10,
+                            ),
                             const SizedBox(width: 12),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(song.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black)),
-                                  Text(song.artist, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12, color: isDark ? Colors.white54 : Colors.black54)),
+                                  Text(
+                                    song.title,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color:
+                                          isDark ? Colors.white : Colors.black,
+                                    ),
+                                  ),
+                                  Text(
+                                    song.artist,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: isDark
+                                          ? Colors.white54
+                                          : Colors.black54,
+                                    ),
+                                  ),
                                 ],
                               ),
                             ),
                           ],
                         ),
                         const SizedBox(height: 16),
-                        Divider(height: 1, color: isDark ? Colors.white12 : Colors.black12),
+                        Divider(
+                          height: 1,
+                          color: isDark ? Colors.white12 : Colors.black12,
+                        ),
                         const SizedBox(height: 8),
-
-                        _buildDialogAction(context: context, icon: isFav ? CupertinoIcons.heart_fill : CupertinoIcons.heart, iconColor: isFav ? primaryColor : null, title: isFav ? 'Remove Favorite' : 'Favorite Song', isDark: isDark, onTap: () { favs.toggleFavoriteSong(song); Navigator.pop(context); }),
-                        _buildDialogAction(context: context, icon: CupertinoIcons.text_insert, title: 'Play Next', isDark: isDark, onTap: () { controller.playNext(song); Navigator.pop(context); }),
-
+                        _buildDialogAction(
+                          context: context,
+                          icon: isFav
+                              ? CupertinoIcons.heart_fill
+                              : CupertinoIcons.heart,
+                          iconColor: isFav ? primaryColor : null,
+                          title: isFav ? 'Remove Favorite' : 'Favorite Song',
+                          isDark: isDark,
+                          onTap: () {
+                            favs.toggleFavoriteSong(song);
+                            Navigator.pop(context);
+                          },
+                        ),
+                        _buildDialogAction(
+                          context: context,
+                          icon: CupertinoIcons.text_insert,
+                          title: 'Play Next',
+                          isDark: isDark,
+                          onTap: () {
+                            controller.playNext(song);
+                            Navigator.pop(context);
+                          },
+                        ),
                         const SizedBox(height: 8),
-                        Divider(height: 1, color: isDark ? Colors.white12 : Colors.black12),
+                        Divider(
+                          height: 1,
+                          color: isDark ? Colors.white12 : Colors.black12,
+                        ),
                         const SizedBox(height: 8),
-
                         InkWell(
                           borderRadius: BorderRadius.circular(12),
                           onTap: () => Navigator.pop(context),
@@ -356,7 +621,14 @@ class _FullScreenPlayerState extends State<FullScreenPlayer> with SingleTickerPr
                             width: double.infinity,
                             padding: const EdgeInsets.symmetric(vertical: 12),
                             alignment: Alignment.center,
-                            child: Text('Cancel', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: primaryColor)),
+                            child: Text(
+                              'Cancel',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: primaryColor,
+                              ),
+                            ),
                           ),
                         ),
                       ],
@@ -371,7 +643,11 @@ class _FullScreenPlayerState extends State<FullScreenPlayer> with SingleTickerPr
     );
   }
 
-  void _showIosSpeedDialog(BuildContext context, AudioController controller, Color primaryColor) {
+  void _showIosSpeedDialog(
+    BuildContext context,
+    AudioController controller,
+    Color primaryColor,
+  ) {
     HapticFeedback.mediumImpact();
     showGeneralDialog(
       context: context,
@@ -381,7 +657,8 @@ class _FullScreenPlayerState extends State<FullScreenPlayer> with SingleTickerPr
       transitionDuration: const Duration(milliseconds: 250),
       pageBuilder: (_, __, ___) => const SizedBox.shrink(),
       transitionBuilder: (context, animation, secondaryAnimation, child) {
-        final curve = CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
+        final curve =
+            CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
         final isDark = Theme.of(context).brightness == Brightness.dark;
 
         return ScaleTransition(
@@ -398,36 +675,57 @@ class _FullScreenPlayerState extends State<FullScreenPlayer> with SingleTickerPr
                   child: Container(
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF252525).withValues(alpha: 0.85) : Colors.white.withValues(alpha: 0.85),
+                      color: isDark
+                          ? const Color(0xFF252525).withValues(alpha: 0.85)
+                          : Colors.white.withValues(alpha: 0.85),
                       borderRadius: BorderRadius.circular(22),
-                      border: Border.all(color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05)),
+                      border: Border.all(
+                        color: isDark
+                            ? Colors.white10
+                            : Colors.black.withValues(alpha: 0.05),
+                      ),
                     ),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text('Playback Speed', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black)),
+                        Text(
+                          'Playback Speed',
+                          style: TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.bold,
+                            color: isDark ? Colors.white : Colors.black,
+                          ),
+                        ),
                         const SizedBox(height: 16),
-                        Divider(height: 1, color: isDark ? Colors.white12 : Colors.black12),
+                        Divider(
+                          height: 1,
+                          color: isDark ? Colors.white12 : Colors.black12,
+                        ),
                         const SizedBox(height: 8),
-
                         ...[0.5, 0.75, 1.0, 1.25, 1.5, 2.0].map((s) {
                           return Obx(() {
                             final isSelected = controller.speed.value == s;
                             return _buildDialogAction(
                               context: context,
-                              icon: isSelected ? CupertinoIcons.checkmark_alt : CupertinoIcons.speedometer,
+                              icon: isSelected
+                                  ? CupertinoIcons.checkmark_alt
+                                  : CupertinoIcons.speedometer,
                               iconColor: isSelected ? primaryColor : null,
                               title: '${s}x Speed',
                               isDark: isDark,
-                              onTap: () { controller.setSpeed(s); Navigator.pop(context); },
+                              onTap: () {
+                                controller.setSpeed(s);
+                                Navigator.pop(context);
+                              },
                             );
                           });
                         }),
-
                         const SizedBox(height: 8),
-                        Divider(height: 1, color: isDark ? Colors.white12 : Colors.black12),
+                        Divider(
+                          height: 1,
+                          color: isDark ? Colors.white12 : Colors.black12,
+                        ),
                         const SizedBox(height: 8),
-
                         InkWell(
                           borderRadius: BorderRadius.circular(12),
                           onTap: () => Navigator.pop(context),
@@ -435,7 +733,14 @@ class _FullScreenPlayerState extends State<FullScreenPlayer> with SingleTickerPr
                             width: double.infinity,
                             padding: const EdgeInsets.symmetric(vertical: 12),
                             alignment: Alignment.center,
-                            child: Text('Cancel', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: primaryColor)),
+                            child: Text(
+                              'Cancel',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: primaryColor,
+                              ),
+                            ),
                           ),
                         ),
                       ],
@@ -450,7 +755,11 @@ class _FullScreenPlayerState extends State<FullScreenPlayer> with SingleTickerPr
     );
   }
 
-  void _showIosSleepTimerDialog(BuildContext context, AudioController controller, Color primaryColor) {
+  void _showIosSleepTimerDialog(
+    BuildContext context,
+    AudioController controller,
+    Color primaryColor,
+  ) {
     HapticFeedback.mediumImpact();
     showGeneralDialog(
       context: context,
@@ -460,7 +769,8 @@ class _FullScreenPlayerState extends State<FullScreenPlayer> with SingleTickerPr
       transitionDuration: const Duration(milliseconds: 250),
       pageBuilder: (_, __, ___) => const SizedBox.shrink(),
       transitionBuilder: (context, animation, secondaryAnimation, child) {
-        final curve = CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
+        final curve =
+            CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
         final isDark = Theme.of(context).brightness == Brightness.dark;
 
         return ScaleTransition(
@@ -477,27 +787,82 @@ class _FullScreenPlayerState extends State<FullScreenPlayer> with SingleTickerPr
                   child: Container(
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF252525).withValues(alpha: 0.85) : Colors.white.withValues(alpha: 0.85),
+                      color: isDark
+                          ? const Color(0xFF252525).withValues(alpha: 0.85)
+                          : Colors.white.withValues(alpha: 0.85),
                       borderRadius: BorderRadius.circular(22),
-                      border: Border.all(color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05)),
+                      border: Border.all(
+                        color: isDark
+                            ? Colors.white10
+                            : Colors.black.withValues(alpha: 0.05),
+                      ),
                     ),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text('Sleep Timer', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black)),
+                        Text(
+                          'Sleep Timer',
+                          style: TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.bold,
+                            color: isDark ? Colors.white : Colors.black,
+                          ),
+                        ),
                         const SizedBox(height: 16),
-                        Divider(height: 1, color: isDark ? Colors.white12 : Colors.black12),
+                        Divider(
+                          height: 1,
+                          color: isDark ? Colors.white12 : Colors.black12,
+                        ),
                         const SizedBox(height: 8),
-
-                        _buildDialogAction(context: context, icon: CupertinoIcons.clear_circled, title: 'Off', isDark: isDark, onTap: () { controller.setSleepTimer(null); Navigator.pop(context); }),
-                        _buildDialogAction(context: context, icon: CupertinoIcons.timer, title: '15 Minutes', isDark: isDark, onTap: () { controller.setSleepTimer(const Duration(minutes: 15)); Navigator.pop(context); }),
-                        _buildDialogAction(context: context, icon: CupertinoIcons.timer, title: '30 Minutes', isDark: isDark, onTap: () { controller.setSleepTimer(const Duration(minutes: 30)); Navigator.pop(context); }),
-                        _buildDialogAction(context: context, icon: CupertinoIcons.timer, title: '60 Minutes', isDark: isDark, onTap: () { controller.setSleepTimer(const Duration(minutes: 60)); Navigator.pop(context); }),
-
+                        _buildDialogAction(
+                          context: context,
+                          icon: CupertinoIcons.clear_circled,
+                          title: 'Off',
+                          isDark: isDark,
+                          onTap: () {
+                            controller.setSleepTimer(null);
+                            Navigator.pop(context);
+                          },
+                        ),
+                        _buildDialogAction(
+                          context: context,
+                          icon: CupertinoIcons.timer,
+                          title: '15 Minutes',
+                          isDark: isDark,
+                          onTap: () {
+                            controller
+                                .setSleepTimer(const Duration(minutes: 15));
+                            Navigator.pop(context);
+                          },
+                        ),
+                        _buildDialogAction(
+                          context: context,
+                          icon: CupertinoIcons.timer,
+                          title: '30 Minutes',
+                          isDark: isDark,
+                          onTap: () {
+                            controller
+                                .setSleepTimer(const Duration(minutes: 30));
+                            Navigator.pop(context);
+                          },
+                        ),
+                        _buildDialogAction(
+                          context: context,
+                          icon: CupertinoIcons.timer,
+                          title: '60 Minutes',
+                          isDark: isDark,
+                          onTap: () {
+                            controller
+                                .setSleepTimer(const Duration(minutes: 60));
+                            Navigator.pop(context);
+                          },
+                        ),
                         const SizedBox(height: 8),
-                        Divider(height: 1, color: isDark ? Colors.white12 : Colors.black12),
+                        Divider(
+                          height: 1,
+                          color: isDark ? Colors.white12 : Colors.black12,
+                        ),
                         const SizedBox(height: 8),
-
                         InkWell(
                           borderRadius: BorderRadius.circular(12),
                           onTap: () => Navigator.pop(context),
@@ -505,7 +870,14 @@ class _FullScreenPlayerState extends State<FullScreenPlayer> with SingleTickerPr
                             width: double.infinity,
                             padding: const EdgeInsets.symmetric(vertical: 12),
                             alignment: Alignment.center,
-                            child: Text('Cancel', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: primaryColor)),
+                            child: Text(
+                              'Cancel',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: primaryColor,
+                              ),
+                            ),
                           ),
                         ),
                       ],
@@ -540,9 +912,21 @@ class _FullScreenPlayerState extends State<FullScreenPlayer> with SingleTickerPr
           padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 8),
           child: Row(
             children: [
-              Icon(icon, size: 20, color: iconColor ?? (isDark ? Colors.white70 : Colors.black87)),
+              Icon(
+                icon,
+                size: 20,
+                color: iconColor ??
+                    (isDark ? Colors.white70 : Colors.black87),
+              ),
               const SizedBox(width: 14),
-              Text(title, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: isDark ? Colors.white : Colors.black87)),
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                  color: isDark ? Colors.white : Colors.black87,
+                ),
+              ),
             ],
           ),
         ),
@@ -561,17 +945,22 @@ class QueueSheet extends StatefulWidget {
 
 class _QueueSheetState extends State<QueueSheet> {
   final AudioController audioController = Get.find<AudioController>();
-  final FavoritesController favoritesController = Get.find<FavoritesController>();
+  final FavoritesController favoritesController =
+      Get.find<FavoritesController>();
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Obx(() {
-      final queue = audioController.queue.value;
+      final queue = audioController.queue;
       final currentSong = audioController.currentSong.value;
-      final currentIndex = currentSong != null ? queue.indexWhere((s) => s.id == currentSong.id) : -1;
-      final upNext = (currentIndex >= 0 && currentIndex < queue.length) ? queue.sublist(currentIndex + 1) : queue;
+      final currentIndex = currentSong != null
+          ? queue.indexWhere((s) => s.id == currentSong.id)
+          : -1;
+      final upNext = (currentIndex >= 0 && currentIndex < queue.length)
+          ? queue.sublist(currentIndex + 1)
+          : queue;
 
       return DraggableScrollableSheet(
         initialChildSize: 0.75,
@@ -585,45 +974,103 @@ class _QueueSheetState extends State<QueueSheet> {
               filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
               child: Container(
                 decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF1C1C1E).withValues(alpha: 0.94) : const Color(0xFFF2F2F7).withValues(alpha: 0.96),
-                  border: Border(top: BorderSide(color: isDark ? Colors.white12 : Colors.black12, width: 0.5)),
+                  color: isDark
+                      ? const Color(0xFF1C1C1E).withValues(alpha: 0.94)
+                      : const Color(0xFFF2F2F7).withValues(alpha: 0.96),
+                  border: Border(
+                    top: BorderSide(
+                      color: isDark ? Colors.white12 : Colors.black12,
+                      width: 0.5,
+                    ),
+                  ),
                 ),
                 child: Column(
                   children: [
                     const SizedBox(height: 10),
-                    Center(child: Container(width: 38, height: 5, decoration: BoxDecoration(color: isDark ? Colors.white30 : Colors.black26, borderRadius: BorderRadius.circular(3)))),
+                    Center(
+                      child: Container(
+                        width: 38,
+                        height: 5,
+                        decoration: BoxDecoration(
+                          color: isDark ? Colors.white30 : Colors.black26,
+                          borderRadius: BorderRadius.circular(3),
+                        ),
+                      ),
+                    ),
                     const SizedBox(height: 12),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 20),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text('Queue', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-                          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Done', style: TextStyle(color: Colors.redAccent, fontSize: 17, fontWeight: FontWeight.w600))),
+                          const Text(
+                            'Queue',
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text(
+                              'Done',
+                              style: TextStyle(
+                                color: Colors.redAccent,
+                                fontSize: 17,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
                         ],
                       ),
                     ),
                     const SizedBox(height: 8),
-                    Divider(color: isDark ? Colors.white12 : Colors.black12, height: 1),
-
-                    if (currentSong != null) _buildNowPlayingTile(currentSong, isDark),
-                    Divider(color: isDark ? Colors.white12 : Colors.black12, height: 1),
-
+                    Divider(
+                      color: isDark ? Colors.white12 : Colors.black12,
+                      height: 1,
+                    ),
+                    if (currentSong != null)
+                      _buildNowPlayingTile(currentSong, isDark),
+                    Divider(
+                      color: isDark ? Colors.white12 : Colors.black12,
+                      height: 1,
+                    ),
                     Expanded(
                       child: upNext.isEmpty
-                          ? Center(child: Text('No more songs in queue', style: TextStyle(color: isDark ? Colors.white54 : Colors.black54, fontSize: 16)))
+                          ? Center(
+                              child: Text(
+                                'No more songs in queue',
+                                style: TextStyle(
+                                  color: isDark
+                                      ? Colors.white54
+                                      : Colors.black54,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            )
                           : ReorderableListView.builder(
                               buildDefaultDragHandles: false,
-                              proxyDecorator: (child, index, animation) => Material(elevation: 6, borderRadius: BorderRadius.circular(12), child: child),
+                              proxyDecorator: (child, index, animation) =>
+                                  Material(
+                                elevation: 6,
+                                borderRadius: BorderRadius.circular(12),
+                                child: child,
+                              ),
                               itemCount: upNext.length,
                               onReorder: (oldIndex, newIndex) {
                                 final actualOld = currentIndex + 1 + oldIndex;
                                 final actualNew = currentIndex + 1 + newIndex;
-                                audioController.reorderQueue(actualOld, actualNew);
+                                audioController.reorderQueue(
+                                    actualOld, actualNew);
                               },
                               itemBuilder: (context, index) {
                                 final song = upNext[index];
-                                return _buildQueueTile(key: ValueKey(song.id), song: song, index: currentIndex + 1 + index, isDark: isDark);
+                                return _buildQueueTile(
+                                  key: ValueKey(song.id),
+                                  song: song,
+                                  index: currentIndex + 1 + index,
+                                  isDark: isDark,
+                                );
                               },
                             ),
                     ),
@@ -640,27 +1087,62 @@ class _QueueSheetState extends State<QueueSheet> {
   Widget _buildNowPlayingTile(dynamic song, bool isDark) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-      color: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.04),
+      color: isDark
+          ? Colors.white.withValues(alpha: 0.06)
+          : Colors.black.withValues(alpha: 0.04),
       child: Row(
         children: [
-          ClipRRect(borderRadius: BorderRadius.circular(6), child: ArtworkWidget(songId: song.id, artworkUrl: song.artwork, size: 48, borderRadius: 6)),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: ArtworkWidget(
+              songId: song.id,
+              artworkUrl: song.artwork,
+              size: 48,
+              borderRadius: 6,
+            ),
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(song.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontWeight: FontWeight.w600, color: isDark ? Colors.white : Colors.black)),
-                Text(song.artist, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 13, color: isDark ? Colors.white54 : Colors.black54)),
+                Text(
+                  song.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: isDark ? Colors.white : Colors.black,
+                  ),
+                ),
+                Text(
+                  song.artist,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: isDark ? Colors.white54 : Colors.black54,
+                  ),
+                ),
               ],
             ),
           ),
-          Icon(CupertinoIcons.play_fill, size: 16, color: Theme.of(context).colorScheme.primary),
+          Icon(
+            CupertinoIcons.play_fill,
+            size: 16,
+            color: Theme.of(context).colorScheme.primary,
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildQueueTile({required Key key, required dynamic song, required int index, required bool isDark}) {
+  Widget _buildQueueTile({
+    required Key key,
+    required dynamic song,
+    required int index,
+    required bool isDark,
+  }) {
     return Dismissible(
       key: key,
       direction: DismissDirection.endToStart,
@@ -672,7 +1154,11 @@ class _QueueSheetState extends State<QueueSheet> {
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.only(right: 24),
         color: Colors.redAccent,
-        child: const Icon(CupertinoIcons.trash_fill, color: Colors.white, size: 24),
+        child: const Icon(
+          CupertinoIcons.trash_fill,
+          color: Colors.white,
+          size: 24,
+        ),
       ),
       child: Material(
         color: Colors.transparent,
@@ -728,13 +1214,15 @@ class _QueueSheetState extends State<QueueSheet> {
                         : (isDark ? Colors.white38 : Colors.black38),
                     size: 22,
                   ),
-                  onPressed: () => favoritesController.toggleFavoriteSong(song),
+                  onPressed: () =>
+                      favoritesController.toggleFavoriteSong(song),
                 ),
                 ReorderableDragStartListener(
                   index: index -
                       (audioController.currentSong.value != null
-                          ? audioController.queue.value
-                                  .indexWhere((s) => s.id == audioController.currentSong.value!.id) +
+                          ? audioController.queue.indexWhere((s) =>
+                                  s.id ==
+                                  audioController.currentSong.value!.id) +
                               1
                           : 0),
                   child: Icon(
@@ -751,7 +1239,6 @@ class _QueueSheetState extends State<QueueSheet> {
     );
   }
 }
-
 
 class _ProgressSlider extends StatefulWidget {
   final Duration position;
@@ -861,9 +1348,9 @@ class _ProgressSliderState extends State<_ProgressSlider>
     return AnimatedBuilder(
       animation: _interactionController,
       builder: (context, child) {
-        final isInteracting = _dragging || _interactionController.isAnimating;
+        final isInteracting =
+            _dragging || _interactionController.isAnimating;
 
-        // ── Track colors ──────────────────────────────────────────────
         final Color activeTrackColor;
         final Color inactiveTrackColor;
 
@@ -875,7 +1362,6 @@ class _ProgressSliderState extends State<_ProgressSlider>
               ? Colors.white.withValues(alpha: 0.38)
               : Colors.white24;
         } else {
-          // Light mode – darker, more visible tracks
           activeTrackColor = isInteracting
               ? Colors.black.withValues(alpha: 0.85)
               : Colors.black.withValues(alpha: 0.55);
@@ -884,7 +1370,6 @@ class _ProgressSliderState extends State<_ProgressSlider>
               : Colors.black12;
         }
 
-        // ── Time label color ──────────────────────────────────────────
         final timeColor = isInteracting
             ? (isDark ? Colors.white : Colors.black)
             : (isDark
@@ -894,7 +1379,6 @@ class _ProgressSliderState extends State<_ProgressSlider>
         return Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Slider
             Transform.scale(
               scale: _scaleAnimation.value,
               alignment: Alignment.center,
@@ -905,10 +1389,12 @@ class _ProgressSliderState extends State<_ProgressSlider>
                     enabledThumbRadius: 0.0,
                     pressedElevation: 0,
                   ),
-                  overlayShape: const RoundSliderOverlayShape(overlayRadius: 16),
+                  overlayShape:
+                      const RoundSliderOverlayShape(overlayRadius: 16),
                   activeTrackColor: activeTrackColor,
                   inactiveTrackColor: inactiveTrackColor,
-                  overlayColor: widget.primaryColor.withValues(alpha: 0.18),
+                  overlayColor:
+                      widget.primaryColor.withValues(alpha: 0.18),
                   trackShape: const RoundedRectSliderTrackShape(),
                 ),
                 child: Slider(
@@ -922,8 +1408,6 @@ class _ProgressSliderState extends State<_ProgressSlider>
                 ),
               ),
             ),
-
-            // Time labels (below)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 10.0),
               child: Row(
@@ -936,8 +1420,9 @@ class _ProgressSliderState extends State<_ProgressSlider>
                       _formatDuration(currentDuration),
                       style: TextStyle(
                         fontSize: 11,
-                        fontWeight:
-                            isInteracting ? FontWeight.w600 : FontWeight.w500,
+                        fontWeight: isInteracting
+                            ? FontWeight.w600
+                            : FontWeight.w500,
                         color: timeColor,
                         fontFeatures: const [FontFeature.tabularFigures()],
                       ),
@@ -950,8 +1435,9 @@ class _ProgressSliderState extends State<_ProgressSlider>
                       _formatDuration(totalDuration),
                       style: TextStyle(
                         fontSize: 11,
-                        fontWeight:
-                            isInteracting ? FontWeight.w600 : FontWeight.w500,
+                        fontWeight: isInteracting
+                            ? FontWeight.w600
+                            : FontWeight.w500,
                         color: timeColor,
                         fontFeatures: const [FontFeature.tabularFigures()],
                       ),

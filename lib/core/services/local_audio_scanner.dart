@@ -1,5 +1,7 @@
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:on_audio_query/on_audio_query.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../models/song_model.dart';
 
 class LocalAudioScanner {
@@ -11,11 +13,35 @@ class LocalAudioScanner {
       if (!status) {
         status = await _audioQuery.permissionsRequest();
       }
+
+      if (!status) {
+        status = await _requestPlatformPermissions();
+      }
+
       return status;
     } catch (e) {
       debugPrint('Permission error: $e');
       return false;
     }
+  }
+
+  Future<bool> _requestPlatformPermissions() async {
+    if (Platform.isIOS) {
+      final status = await Permission.mediaLibrary.request();
+      return status.isGranted;
+    }
+
+    if (Platform.isAndroid) {
+      final statuses = await [
+        Permission.storage,
+        Permission.audio,
+      ].request();
+
+      return statuses[Permission.storage]?.isGranted == true ||
+          statuses[Permission.audio]?.isGranted == true;
+    }
+
+    return true;
   }
 
   Future<List<Song>> scanLocalSongs() async {

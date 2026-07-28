@@ -15,11 +15,21 @@ class MiniPlayer extends StatelessWidget {
     this.onSwipeUp,
   });
 
+  String _formatCountdown(Duration d) {
+    final minutes = d.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final seconds = d.inSeconds.remainder(60).toString().padLeft(2, '0');
+    if (d.inHours > 0) {
+      return '${d.inHours}:$minutes:$seconds';
+    }
+    return '$minutes:$seconds';
+  }
+
   @override
   Widget build(BuildContext context) {
     final audioController = Get.find<AudioController>();
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final primaryColor = theme.colorScheme.primary;
 
     return Obx(() {
       final currentSong = audioController.currentSong.value;
@@ -31,10 +41,18 @@ class MiniPlayer extends StatelessWidget {
           ? (current.inMilliseconds / total.inMilliseconds).clamp(0.0, 1.0)
           : 0.0;
 
+      final speed = audioController.speed.value;
+      final isCustomSpeed = speed != 1.0;
+
+      final sleepRemaining = audioController.sleepTimer.value;
+      final isSleepActive =
+          sleepRemaining != null && sleepRemaining > Duration.zero;
+
       return GestureDetector(
         onTap: onTap,
         onVerticalDragEnd: (details) {
-          if (details.primaryVelocity != null && details.primaryVelocity! < -250) {
+          if (details.primaryVelocity != null &&
+              details.primaryVelocity! < -250) {
             if (onSwipeUp != null) {
               onSwipeUp!();
             } else {
@@ -66,7 +84,8 @@ class MiniPlayer extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 8),
                       child: Row(
                         children: [
                           Hero(
@@ -100,12 +119,71 @@ class MiniPlayer extends StatelessWidget {
                                   overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
                                     fontSize: 12,
-                                    color: isDark ? Colors.white60 : Colors.black54,
+                                    color: isDark
+                                        ? Colors.white60
+                                        : Colors.black54,
                                   ),
                                 ),
                               ],
                             ),
                           ),
+
+                          // ── Speed indicator (only when ≠ 1.0x) ──
+                          if (isCustomSpeed) ...[
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: primaryColor.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                '${speed}x',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: primaryColor,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                          ],
+
+                          // ── Sleep timer countdown (only when active) ──
+                          if (isSleepActive) ...[
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: primaryColor.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    CupertinoIcons.timer,
+                                    size: 12,
+                                    color: primaryColor,
+                                  ),
+                                  const SizedBox(width: 3),
+                                  Text(
+                                    _formatCountdown(sleepRemaining),
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      color: primaryColor,
+                                      fontFeatures: const [
+                                        FontFeature.tabularFigures()
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                          ],
+
                           IconButton(
                             icon: Icon(
                               audioController.playing.value
@@ -134,12 +212,12 @@ class MiniPlayer extends StatelessWidget {
                       ),
                     ),
                     ClipRRect(
-                      borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
+                      borderRadius: const BorderRadius.vertical(
+                          bottom: Radius.circular(16)),
                       child: LinearProgressIndicator(
                         value: progress,
                         minHeight: 2.5,
                         backgroundColor: Colors.transparent,
-                        // valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFFA2D48)),
                       ),
                     ),
                   ],

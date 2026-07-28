@@ -16,6 +16,9 @@ class AudioController extends GetxController {
   final Rx<Duration> totalDuration = Duration.zero.obs;
   final RxList<Song> queue = <Song>[].obs;
   final RxDouble speed = 1.0.obs;
+
+  /// Remaining sleep time. `null` = timer off.
+  /// Updated every second while active.
   final Rxn<Duration> sleepTimer = Rxn<Duration>();
 
   StreamSubscription? _mediaSub;
@@ -24,6 +27,8 @@ class AudioController extends GetxController {
   StreamSubscription? _positionSub;
   StreamSubscription? _currentSongSub;
   StreamSubscription? _sleepTimerSub;
+
+  Timer? _sleepCountdownTimer;
 
   @override
   void onInit() {
@@ -60,7 +65,9 @@ class AudioController extends GetxController {
           album: item.album ?? 'Unknown Album',
           artwork: item.artUri?.toString(),
           duration: item.duration ?? Duration.zero,
-          source: sourceStr == 'network' ? AudioSourceType.network : AudioSourceType.local,
+          source: sourceStr == 'network'
+              ? AudioSourceType.network
+              : AudioSourceType.local,
           uri: extras['uri'] as String? ?? '',
           genre: extras['genre'] as String?,
           isFavorite: extras['isFavorite'] as bool? ?? false,
@@ -73,8 +80,12 @@ class AudioController extends GetxController {
       position.value = pos;
     });
 
+    // Keep listening to handler stream (in case handler also emits)
     _sleepTimerSub = _handler.sleepTimerStream.listen((timer) {
-      sleepTimer.value = timer;
+      // Only accept external updates when we don't have an active local countdown
+      if (_sleepCountdownTimer == null || !_sleepCountdownTimer!.isActive) {
+        sleepTimer.value = timer;
+      }
     });
   }
 
@@ -91,9 +102,16 @@ class AudioController extends GetxController {
       return;
     }
 
+    // Update UI immediately so player opens with the selected song rather than showing the previous one.
+    currentSong.value = song;
+    totalDuration.value = song.duration;
+
     if (contextQueue != null && contextQueue.isNotEmpty) {
       final index = contextQueue.indexWhere((s) => s.id == song.id);
-      await _handler.setQueue(contextQueue, initialIndex: index >= 0 ? index : 0);
+      await _handler.setQueue(
+        contextQueue,
+        initialIndex: index >= 0 ? index : 0,
+      );
     } else {
       await _handler.setQueue([song], initialIndex: 0);
     }
@@ -111,7 +129,8 @@ class AudioController extends GetxController {
   Future<void> playNext(Song song) => _handler.playNext(song);
   Future<void> addToQueue(Song song) => _handler.addToQueue(song);
   Future<void> removeFromQueue(int index) => _handler.removeFromQueue(index);
-  Future<void> reorderQueue(int oldIndex, int newIndex) => _handler.reorderQueue(oldIndex, newIndex);
+  Future<void> reorderQueue(int oldIndex, int newIndex) =>
+      _handler.reorderQueue(oldIndex, newIndex);
   Future<void> clearQueue() => _handler.clearQueue();
 
   Future<void> toggleShuffle() {
@@ -133,10 +152,45 @@ class AudioController extends GetxController {
 
   Future<void> setSpeed(double newSpeed) => _handler.setSpeed(newSpeed);
 
-  void setSleepTimer(Duration? duration) => _handler.setSleepTimer(duration);
+  /// Sets (or clears) the sleep timer and starts a live countdown.
+  void setSleepTimer(Duration? duration) {
+    // Cancel any existing countdown
+    _sleepCountdownTimer?.cancel();
+    _sleepCountdownTimer = null;
+
+    // Notify the audio handler
+    _handler.setSleepTimer(duration);
+
+    if (duration == null || duration <= Duration.zero) {
+      sleepTimer.value = null;
+      return;
+    }
+
+    // Start live countdown
+    sleepTimer.value = duration;
+
+    _sleepCountdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      final current = sleepTimer.value;
+      if (current == null || current <= const Duration(seconds: 1)) {
+        // Time's up
+        timer.cancel();
+        _sleepCountdownTimer = null;
+        sleepTimer.value = null;
+
+        // Pause playback when timer finishes
+        if (playing.value) {
+          pause();
+        }
+        return;
+      }
+
+      sleepTimer.value = current - const Duration(seconds: 1);
+    });
+  }
 
   @override
   void onClose() {
+    _sleepCountdownTimer?.cancel();
     _mediaSub?.cancel();
     _playbackSub?.cancel();
     _queueSub?.cancel();

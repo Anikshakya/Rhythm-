@@ -144,7 +144,7 @@ import '../models/song_model.dart';
 class OnlineAudioService {
   // App name required by Audius API guidelines
   static const String _appName = 'FlutterMusicApp';
-  static const String _audiusHost = 'https://discoveryprovider.audius.co';
+  static const String _audiusHost = 'discoveryprovider.audius.co';
 
   // Sample trending backup songs
   static final List<Song> _sampleTrendingSongs = [
@@ -173,7 +173,7 @@ class OnlineAudioService {
   Future<List<Song>> searchOnlineMusic(String query) async {
     if (query.isEmpty) return [];
 
-    final searchUrl = '$_audiusHost/v1/tracks/search?query=${Uri.encodeComponent(query)}&app_name=$_appName&limit=25';
+    final searchUrl = 'https://$_audiusHost/v1/tracks/search?query=${Uri.encodeComponent(query)}&app_name=$_appName&limit=25';
     return _fetchAudiusTracks(searchUrl);
   }
 
@@ -198,7 +198,7 @@ class OnlineAudioService {
           final genre = item['genre'] as String?;
 
           // DIRECT FULL-LENGTH AUDIO STREAM URL
-          final streamUrl = '$_audiusHost/v1/tracks/$trackId/stream?app_name=$_appName';
+          final streamUrl = 'https://$_audiusHost/v1/tracks/$trackId/stream?app_name=$_appName';
 
           // High-res cover art
           final artworkMap = item['artwork'] as Map<String, dynamic>?;
