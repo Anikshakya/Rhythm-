@@ -23,9 +23,14 @@ class SongsTab extends StatelessWidget {
         return const Center(child: CupertinoActivityIndicator());
       }
 
-      final songs = libraryController.songs;
+      final songs = libraryController.filteredSongs;
 
       if (songs.isEmpty) {
+        if (libraryController.searchQuery.value.isNotEmpty) {
+          return const Center(
+            child: Text('No matching songs found.'),
+          );
+        }
         return Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,

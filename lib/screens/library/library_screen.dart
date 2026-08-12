@@ -1,3 +1,4 @@
+import 'package:dhun/controllers/library_controller.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -10,10 +11,7 @@ import 'tabs/songs_tab.dart';
 class LibraryScreen extends StatefulWidget {
   final VoidCallback onNavigateToPlayer;
 
-  const LibraryScreen({
-    super.key,
-    required this.onNavigateToPlayer,
-  });
+  const LibraryScreen({super.key, required this.onNavigateToPlayer});
 
   @override
   State<LibraryScreen> createState() => _LibraryScreenState();
@@ -21,7 +19,15 @@ class LibraryScreen extends StatefulWidget {
 
 class _LibraryScreenState extends State<LibraryScreen> {
   final themeController = Get.find<ThemeController>();
+  final libraryController = Get.find<LibraryController>();
+  final searchController = TextEditingController();
   int _segmentedControlValue = 0;
+
+  @override
+  void dispose() {
+    searchController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -81,8 +87,12 @@ class _LibraryScreenState extends State<LibraryScreen> {
                     width: double.infinity,
                     child: CupertinoSlidingSegmentedControl<int>(
                       groupValue: _segmentedControlValue,
-                      backgroundColor: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05),
-                      thumbColor: isDark ? const Color(0xFF636366) : Colors.white,
+                      backgroundColor:
+                          isDark
+                              ? Colors.white10
+                              : Colors.black.withValues(alpha: 0.05),
+                      thumbColor:
+                          isDark ? const Color(0xFF636366) : Colors.white,
                       children: {
                         0: _buildSegmentText('Songs', 0, theme, isDark),
                         1: _buildSegmentText('Albums', 1, theme, isDark),
@@ -90,25 +100,220 @@ class _LibraryScreenState extends State<LibraryScreen> {
                         3: _buildSegmentText('Playlists', 3, theme, isDark),
                       },
                       onValueChanged: (v) {
-                        if (v != null) setState(() => _segmentedControlValue = v);
+                        if (v != null) {
+                          setState(() {
+                            _segmentedControlValue = v;
+                          });
+                          // Reset sort parameter depending on the active tab
+                          if (v == 1 || v == 2) {
+                            if (libraryController.sortBy.value == 'album' ||
+                                libraryController.sortBy.value == 'duration') {
+                              libraryController.sortBy.value = 'title';
+                            }
+                          }
+                        }
                       },
                     ),
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  /// APPLE MUSIC STYLE SEARCH & SORT ROW
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Container(
+                          height: 38,
+                          decoration: BoxDecoration(
+                            color:
+                                isDark
+                                    ? Colors.white10
+                                    : Colors.black.withValues(alpha: 0.05),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: TextField(
+                            controller: searchController,
+                            onChanged: (val) {
+                              libraryController.searchQuery.value = val;
+                            },
+                            style: TextStyle(
+                              fontSize: 15,
+                              color: isDark ? Colors.white : Colors.black,
+                            ),
+                            decoration: InputDecoration(
+                              prefixIcon: Icon(
+                                CupertinoIcons.search,
+                                size: 18,
+                                color: isDark ? Colors.white54 : Colors.black45,
+                              ),
+                              hintText: 'Search in library...',
+                              hintStyle: TextStyle(
+                                fontSize: 14,
+                                color: isDark ? Colors.white30 : Colors.black38,
+                              ),
+                              border: InputBorder.none,
+                              contentPadding: const EdgeInsets.symmetric(
+                                vertical: 8,
+                              ),
+                              suffixIcon: Obx(() {
+                                final query =
+                                    libraryController.searchQuery.value;
+                                if (query.isEmpty) {
+                                  return const SizedBox.shrink();
+                                }
+                                return GestureDetector(
+                                  onTap: () {
+                                    searchController.clear();
+                                    libraryController.searchQuery.value = '';
+                                  },
+                                  child: Icon(
+                                    CupertinoIcons.clear_circled_solid,
+                                    size: 16,
+                                    color:
+                                        isDark
+                                            ? Colors.white54
+                                            : Colors.black45,
+                                  ),
+                                );
+                              }),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Obx(() {
+                        final currentSort = libraryController.sortBy.value;
+                        return Theme(
+                          data: Theme.of(context).copyWith(
+                            cardColor:
+                                isDark ? const Color(0xFF2C2C2E) : Colors.white,
+                          ),
+                          child: PopupMenuButton<String>(
+                            icon: Icon(
+                              CupertinoIcons.sort_down,
+                              color: theme.colorScheme.primary,
+                            ),
+                            tooltip: 'Sort Options',
+                            onSelected: (String value) {
+                              libraryController.sortBy.value = value;
+                            },
+                            itemBuilder:
+                                (
+                                  BuildContext context,
+                                ) => <PopupMenuEntry<String>>[
+                                  PopupMenuItem<String>(
+                                    value: 'title',
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          CupertinoIcons.checkmark,
+                                          size: 16,
+                                          color:
+                                              currentSort == 'title'
+                                                  ? theme.colorScheme.primary
+                                                  : Colors.transparent,
+                                        ),
+                                        const SizedBox(width: 8),
+                                        const Text('Name'),
+                                      ],
+                                    ),
+                                  ),
+                                  PopupMenuItem<String>(
+                                    value: 'artist',
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          CupertinoIcons.checkmark,
+                                          size: 16,
+                                          color:
+                                              currentSort == 'artist'
+                                                  ? theme.colorScheme.primary
+                                                  : Colors.transparent,
+                                        ),
+                                        const SizedBox(width: 8),
+                                        const Text('Artist'),
+                                      ],
+                                    ),
+                                  ),
+                                  if (_segmentedControlValue == 0) ...[
+                                    PopupMenuItem<String>(
+                                      value: 'album',
+                                      child: Row(
+                                        children: [
+                                          Icon(
+                                            CupertinoIcons.checkmark,
+                                            size: 16,
+                                            color:
+                                                currentSort == 'album'
+                                                    ? theme.colorScheme.primary
+                                                    : Colors.transparent,
+                                          ),
+                                          const SizedBox(width: 8),
+                                          const Text('Album'),
+                                        ],
+                                      ),
+                                    ),
+                                    PopupMenuItem<String>(
+                                      value: 'duration',
+                                      child: Row(
+                                        children: [
+                                          Icon(
+                                            CupertinoIcons.checkmark,
+                                            size: 16,
+                                            color:
+                                                currentSort == 'duration'
+                                                    ? theme.colorScheme.primary
+                                                    : Colors.transparent,
+                                          ),
+                                          const SizedBox(width: 8),
+                                          const Text('Duration'),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                  if (_segmentedControlValue == 1 ||
+                                      _segmentedControlValue == 2)
+                                    PopupMenuItem<String>(
+                                      value: 'tracks',
+                                      child: Row(
+                                        children: [
+                                          Icon(
+                                            CupertinoIcons.checkmark,
+                                            size: 16,
+                                            color:
+                                                currentSort == 'tracks'
+                                                    ? theme.colorScheme.primary
+                                                    : Colors.transparent,
+                                          ),
+                                          const SizedBox(width: 8),
+                                          const Text('Track Count'),
+                                        ],
+                                      ),
+                                    ),
+                                ],
+                          ),
+                        );
+                      }),
+                    ],
                   ),
                 ],
               ),
             ),
 
             /// TAB CONTENT
-            Expanded(
-              child: _buildTabContent(),
-            ),
+            Expanded(child: _buildTabContent()),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildSegmentText(String text, int index, ThemeData theme, bool isDark) {
+  Widget _buildSegmentText(
+    String text,
+    int index,
+    ThemeData theme,
+    bool isDark,
+  ) {
     final isSelected = _segmentedControlValue == index;
 
     return Padding(
@@ -118,9 +323,10 @@ class _LibraryScreenState extends State<LibraryScreen> {
         style: TextStyle(
           fontSize: 13,
           fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-          color: isSelected
-              ? (isDark ? Colors.white : Colors.black)
-              : theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.6),
+          color:
+              isSelected
+                  ? (isDark ? Colors.white : Colors.black)
+                  : theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.6),
         ),
       ),
     );

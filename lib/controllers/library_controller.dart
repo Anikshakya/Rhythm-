@@ -21,6 +21,77 @@ class LibraryController extends GetxController {
   final RxBool isLoading = false.obs;
   final RxString error = ''.obs;
 
+  final RxString searchQuery = ''.obs;
+  final RxString sortBy = 'title'.obs; // 'title', 'artist', 'album', 'duration', 'tracks'
+
+  List<Song> get filteredSongs {
+    List<Song> list = List.from(songs);
+    if (searchQuery.isNotEmpty) {
+      final query = searchQuery.value.toLowerCase();
+      list = list.where((song) {
+        return song.title.toLowerCase().contains(query) ||
+               song.artist.toLowerCase().contains(query);
+      }).toList();
+    }
+
+    if (sortBy.value == 'title') {
+      list.sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
+    } else if (sortBy.value == 'artist') {
+      list.sort((a, b) => a.artist.toLowerCase().compareTo(b.artist.toLowerCase()));
+    } else if (sortBy.value == 'album') {
+      list.sort((a, b) => a.album.toLowerCase().compareTo(b.album.toLowerCase()));
+    } else if (sortBy.value == 'duration') {
+      list.sort((a, b) => a.duration.compareTo(b.duration));
+    }
+    return list;
+  }
+
+  List<MapEntry<String, List<Song>>> get filteredAlbums {
+    var list = albums.entries.toList();
+    if (searchQuery.isNotEmpty) {
+      final query = searchQuery.value.toLowerCase();
+      list = list.where((entry) {
+        final albumName = entry.key.toLowerCase();
+        final matchesAlbum = albumName.contains(query);
+        final matchesSongs = entry.value.any((song) =>
+            song.title.toLowerCase().contains(query) ||
+            song.artist.toLowerCase().contains(query));
+        return matchesAlbum || matchesSongs;
+      }).toList();
+    }
+
+    if (sortBy.value == 'title') {
+      list.sort((a, b) => a.key.toLowerCase().compareTo(b.key.toLowerCase()));
+    } else if (sortBy.value == 'artist') {
+      list.sort((a, b) => a.value.first.artist.toLowerCase().compareTo(b.value.first.artist.toLowerCase()));
+    } else if (sortBy.value == 'tracks') {
+      list.sort((a, b) => b.value.length.compareTo(a.value.length));
+    }
+    return list;
+  }
+
+  List<MapEntry<String, List<Song>>> get filteredArtists {
+    var list = artists.entries.toList();
+    if (searchQuery.isNotEmpty) {
+      final query = searchQuery.value.toLowerCase();
+      list = list.where((entry) {
+        final artistName = entry.key.toLowerCase();
+        final matchesArtist = artistName.contains(query);
+        final matchesSongs = entry.value.any((song) =>
+            song.title.toLowerCase().contains(query) ||
+            song.album.toLowerCase().contains(query));
+        return matchesArtist || matchesSongs;
+      }).toList();
+    }
+
+    if (sortBy.value == 'title' || sortBy.value == 'artist') {
+      list.sort((a, b) => a.key.toLowerCase().compareTo(b.key.toLowerCase()));
+    } else if (sortBy.value == 'tracks') {
+      list.sort((a, b) => b.value.length.compareTo(a.value.length));
+    }
+    return list;
+  }
+
   @override
   void onInit() {
     super.onInit();

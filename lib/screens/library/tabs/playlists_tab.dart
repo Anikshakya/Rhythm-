@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../../controllers/favorites_controller.dart';
 import '../../../controllers/playlist_controller.dart';
+import '../../../controllers/library_controller.dart';
 import '../../../widgets/custom_scroll_animation.dart';
 import '../../favorites/favorites_screen.dart';
 import '../../playlists/playlists_screen.dart';
@@ -19,13 +20,17 @@ class PlaylistsTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final playlistController = Get.find<PlaylistController>();
     final favoritesController = Get.find<FavoritesController>();
+    final libraryController = Get.find<LibraryController>();
 
     return Obx(() {
       if (playlistController.isLoading.value) {
         return const Center(child: CupertinoActivityIndicator());
       }
 
-      final playlists = playlistController.playlists;
+      final query = libraryController.searchQuery.value.toLowerCase();
+      final filteredPlaylists = playlistController.playlists.where((pl) {
+        return pl.name.toLowerCase().contains(query);
+      }).toList();
 
       return Column(
         children: [
@@ -86,13 +91,19 @@ class PlaylistsTab extends StatelessWidget {
 
           /// USER PLAYLISTS LIST
           Expanded(
-            child: playlists.isEmpty
-                ? const Center(child: Text('No custom playlists created yet'))
+            child: filteredPlaylists.isEmpty
+                ? Center(
+                    child: Text(
+                      libraryController.searchQuery.value.isNotEmpty
+                          ? 'No matching playlists found.'
+                          : 'No custom playlists created yet',
+                    ),
+                  )
                 : ListView.builder(
                     padding: const EdgeInsets.only(bottom: 120),
-                    itemCount: playlists.length,
+                    itemCount: filteredPlaylists.length,
                     itemBuilder: (context, index) {
-                      final playlist = playlists[index];
+                      final playlist = filteredPlaylists[index];
                       return CustomScrollAnimation(
                         key: ValueKey('pl_${playlist.id}'),
                         index: index,

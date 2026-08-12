@@ -33,6 +33,10 @@ class _ArtworkWidgetState extends State<ArtworkWidget> {
   @override
   void initState() {
     super.initState();
+    final key = widget.songId ?? widget.artworkUrl ?? '';
+    if (key.isNotEmpty && artworkByteStore.containsKey(key)) {
+      _bytes = artworkByteStore[key];
+    }
     _resolveArtwork();
   }
 
@@ -40,6 +44,12 @@ class _ArtworkWidgetState extends State<ArtworkWidget> {
   void didUpdateWidget(covariant ArtworkWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.songId != widget.songId || oldWidget.artworkUrl != widget.artworkUrl) {
+      final key = widget.songId ?? widget.artworkUrl ?? '';
+      if (key.isNotEmpty && artworkByteStore.containsKey(key)) {
+        _bytes = artworkByteStore[key];
+      } else {
+        _bytes = null;
+      }
       _resolveArtwork();
     }
   }
@@ -124,7 +134,7 @@ class _ArtworkWidgetState extends State<ArtworkWidget> {
         artworkBorder: BorderRadius.circular(widget.borderRadius),
         artworkQuality: FilterQuality.high,
         size: 800,
-        keepOldArtwork: true,
+        keepOldArtwork: false,
         nullArtworkWidget: _buildPlaceholder(fallbackColor, isDark),
       );
     } else {

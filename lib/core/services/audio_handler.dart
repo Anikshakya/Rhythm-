@@ -151,23 +151,28 @@ class RhythmAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler
     if (songs.isEmpty) return;
 
     _isUpdatingQueue = true;
-    _rawQueue.clear();
-    _rawQueue.addAll(songs);
+    try {
+      _rawQueue.clear();
+      _rawQueue.addAll(songs);
 
-    final mediaItems = songs.map((s) => s.toMediaItem()).toList();
-    queue.add(mediaItems);
+      final mediaItems = songs.map((s) => s.toMediaItem()).toList();
+      queue.add(mediaItems);
 
-    final validIndex = initialIndex.clamp(0, songs.length - 1);
-    final selectedSong = _rawQueue[validIndex];
-    _currentSongSubject.add(selectedSong);
-    mediaItem.add(selectedSong.toMediaItem());
+      final validIndex = initialIndex.clamp(0, songs.length - 1);
+      final selectedSong = _rawQueue[validIndex];
+      _currentSongSubject.add(selectedSong);
+      mediaItem.add(selectedSong.toMediaItem());
 
-    final sources = songs.map((s) => s.toAudioSource()).toList();
-    await _playlist.clear();
-    await _playlist.addAll(sources);
-    await _player.seek(Duration.zero, index: validIndex);
-    await _player.play();
-    _isUpdatingQueue = false;
+      final sources = songs.map((s) => s.toAudioSource()).toList();
+      await _playlist.clear();
+      await _playlist.addAll(sources);
+      await _player.seek(Duration.zero, index: validIndex);
+      
+      // Start playing in background without blocking this Future's completion
+      _player.play();
+    } finally {
+      _isUpdatingQueue = false;
+    }
 
     _persistSession();
   }
@@ -218,11 +223,13 @@ class RhythmAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler
   Future<void> skipToQueueItem(int index) async {
     if (index < 0 || index >= _rawQueue.length) return;
     await _player.seek(Duration.zero, index: index);
-    await _player.play();
+    _player.play();
   }
 
   @override
-  Future<void> play() => _player.play();
+  Future<void> play() async {
+    _player.play();
+  }
 
   @override
   Future<void> pause() => _player.pause();
@@ -244,6 +251,14 @@ class RhythmAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler
   Future<void> skipToNext() async {
     if (_player.hasNext) {
       await _player.seekToNext();
+    } else if (_player.shuffleModeEnabled && _rawQueue.isNotEmpty) {
+      final shuffleIndices = _player.shuffleIndices;
+      if (shuffleIndices.isNotEmpty) {
+        await _player.seek(Duration.zero, index: shuffleIndices.first);
+      } else {
+        final randomVal = Random().nextInt(_rawQueue.length);
+        await _player.seek(Duration.zero, index: randomVal);
+      }
     } else if (playbackState.value.repeatMode == AudioServiceRepeatMode.all && _rawQueue.isNotEmpty) {
       await _player.seek(Duration.zero, index: 0);
     }
@@ -336,5 +351,11 @@ class RhythmAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler
     } catch (e) {
       debugPrint("Session restore error: $e");
     }
+  }
+
+  @override
+  Future<void> onTaskRemoved() async {
+    await stop();
+    await super.onTaskRemoved();
   }
 }
