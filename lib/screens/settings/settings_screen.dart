@@ -1,10 +1,10 @@
-import 'dart:ui';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../controllers/audio_controller.dart';
 import '../../controllers/library_controller.dart';
 import '../../controllers/theme_controller.dart';
+import '../../widgets/ios_popover_menu.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -32,74 +32,6 @@ class SettingsScreen extends StatelessWidget {
         borderRadius: BorderRadius.circular(7),
       ),
       child: Center(child: Icon(icon, color: iconColor, size: 18)),
-    );
-  }
-
-  /// Custom Frosted Glass Popover Menu
-  void _showIOSPopoverMenu({
-    required BuildContext context,
-    required Offset position,
-    required List<Widget> items,
-  }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    showGeneralDialog(
-      context: context,
-      barrierDismissible: true,
-      barrierLabel: 'Dismiss',
-      barrierColor: Colors.black.withValues(alpha: 0.2),
-      transitionDuration: const Duration(milliseconds: 200),
-      pageBuilder: (context, anim1, anim2) {
-        return Stack(
-          children: [
-            Positioned(
-              right: 16,
-              top: position.dy,
-              child: Material(
-                color: Colors.transparent,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(16),
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-                    child: Container(
-                      width: 230,
-                      decoration: BoxDecoration(
-                        color:
-                            isDark
-                                ? const Color(0xFF2C2C2E).withValues(alpha: 0.8)
-                                : Colors.white.withValues(alpha: 0.85),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color:
-                              isDark
-                                  ? Colors.white.withValues(alpha: 0.1)
-                                  : Colors.black.withValues(alpha: 0.05),
-                        ),
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: items,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        );
-      },
-      transitionBuilder: (context, anim1, anim2, child) {
-        return FadeTransition(
-          opacity: anim1,
-          child: ScaleTransition(
-            scale: Tween<double>(begin: 0.9, end: 1.0).animate(
-              CurvedAnimation(parent: anim1, curve: Curves.easeOutBack),
-            ),
-            alignment: Alignment.topRight,
-            child: child,
-          ),
-        );
-      },
     );
   }
 
@@ -195,8 +127,8 @@ class SettingsScreen extends StatelessWidget {
                 audioController: audioController,
                 primaryColor: primaryColor,
                 isDark: isDark,
-                onOpenPopover: (context, offset) {
-                  _showSpeedPopover(context, offset, audioController, isDark);
+                onOpenPopover: (context) {
+                  _showSpeedPopover(context, audioController, isDark);
                 },
                 buildIcon: _buildIosIcon,
               ),
@@ -206,13 +138,8 @@ class SettingsScreen extends StatelessWidget {
                 audioController: audioController,
                 primaryColor: primaryColor,
                 isDark: isDark,
-                onOpenPopover: (context, offset) {
-                  _showSleepTimerPopover(
-                    context,
-                    offset,
-                    audioController,
-                    isDark,
-                  );
+                onOpenPopover: (context) {
+                  _showSleepTimerPopover(context, audioController, isDark);
                 },
                 buildIcon: _buildIosIcon,
               ),
@@ -257,91 +184,71 @@ class SettingsScreen extends StatelessWidget {
   /// Speed Popover Builder
   void _showSpeedPopover(
     BuildContext context,
-    Offset position,
     AudioController controller,
     bool isDark,
   ) {
     final speeds = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
+    final primaryColor = Theme.of(context).colorScheme.primary;
 
-    List<Widget> items = [];
-    for (int i = 0; i < speeds.length; i++) {
-      final s = speeds[i];
-      final isFirst = i == 0;
-      final isLast = i == speeds.length - 1;
-
-      items.add(
-        Obx(() {
-          final isSelected = controller.speed.value == s;
-
-          return Material(
-            color: Colors.transparent,
-            child: InkWell(
-              borderRadius: BorderRadius.vertical(
-                top: isFirst ? const Radius.circular(16) : Radius.zero,
-                bottom: isLast ? const Radius.circular(16) : Radius.zero,
-              ),
-              onTap: () {
-                controller.setSpeed(s);
-                controller.speed.refresh(); // Forces GetX trigger
-                Navigator.pop(context);
-              },
-              splashColor: isDark ? Colors.white12 : Colors.black12,
-              highlightColor:
-                  isDark
-                      ? Colors.white10
-                      : Colors.black.withValues(alpha: 0.05),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      '${s}x',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight:
-                            isSelected ? FontWeight.bold : FontWeight.normal,
-                        color: isDark ? Colors.white : Colors.black,
-                      ),
-                    ),
-                    if (isSelected)
-                      Icon(
-                        CupertinoIcons.checkmark,
-                        size: 18,
-                        color: isDark ? Colors.white : Colors.black,
-                      ),
-                  ],
-                ),
+    showIosPopoverMenu(
+      context: context,
+      isCentered: true,
+      width: 260,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          child: Center(
+            child: Text(
+              'Playback Speed',
+              style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.bold,
+                color: isDark ? Colors.white : Colors.black,
               ),
             ),
-          );
-        }),
-      );
-
-      if (!isLast) {
-        items.add(
-          Divider(
-            height: 0.5,
-            thickness: 0.5,
-            color:
-                isDark
-                    ? Colors.white.withValues(alpha: 0.15)
-                    : Colors.black.withValues(alpha: 0.1),
           ),
-        );
-      }
-    }
-
-    _showIOSPopoverMenu(context: context, position: position, items: items);
+        ),
+        Divider(
+          height: 0.5,
+          thickness: 0.5,
+          color:
+              isDark
+                  ? Colors.white.withValues(alpha: 0.15)
+                  : Colors.black.withValues(alpha: 0.1),
+        ),
+        ...IosPopoverMenu.buildActionList(
+          isDark: isDark,
+          isFirstGroup: false,
+          isLastGroup: false,
+          actions:
+              speeds.map((s) {
+                return IosPopoverAction(
+                  title: '${s}x Speed',
+                  icon: CupertinoIcons.speedometer,
+                  trailing: Obx(() {
+                    final isSelected = controller.speed.value == s;
+                    return isSelected
+                        ? Icon(
+                          CupertinoIcons.checkmark,
+                          size: 18,
+                          color: primaryColor,
+                        )
+                        : const SizedBox.shrink();
+                  }),
+                  onTap: () {
+                    controller.setSpeed(s);
+                    Navigator.pop(context);
+                  },
+                );
+              }).toList(),
+        ),
+      ],
+    );
   }
 
   /// Sleep Timer Popover Builder
   void _showSleepTimerPopover(
     BuildContext context,
-    Offset position,
     AudioController controller,
     bool isDark,
   ) {
@@ -351,97 +258,74 @@ class SettingsScreen extends StatelessWidget {
       {'label': '30 Minutes', 'duration': const Duration(minutes: 30)},
       {'label': '60 Minutes', 'duration': const Duration(minutes: 60)},
     ];
+    final primaryColor = Theme.of(context).colorScheme.primary;
 
-    List<Widget> items = [];
-    for (int i = 0; i < options.length; i++) {
-      final duration = options[i]['duration'] as Duration?;
-      final label = options[i]['label'] as String;
-      final isFirst = i == 0;
-      final isLast = i == options.length - 1;
-
-      items.add(
-        Obx(() {
-          final currentTimer = controller.sleepTimer.value;
-          final bool isSelected =
-              (duration == null && currentTimer == null) ||
-              (duration != null &&
-                  currentTimer != null &&
-                  currentTimer.inMinutes == duration.inMinutes);
-
-          return Material(
-            color: Colors.transparent,
-            child: InkWell(
-              borderRadius: BorderRadius.vertical(
-                top: isFirst ? const Radius.circular(16) : Radius.zero,
-                bottom: isLast ? const Radius.circular(16) : Radius.zero,
-              ),
-              onTap: () {
-                controller.setSleepTimer(duration);
-                controller.sleepTimer.refresh(); // Forces GetX trigger
-                Navigator.pop(context);
-              },
-              splashColor:
-                  duration == null
-                      ? CupertinoColors.destructiveRed.withValues(alpha: 0.15)
-                      : (isDark ? Colors.white12 : Colors.black12),
-              highlightColor:
-                  duration == null
-                      ? CupertinoColors.destructiveRed.withValues(alpha: 0.1)
-                      : (isDark
-                          ? Colors.white10
-                          : Colors.black.withValues(alpha: 0.05)),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      label,
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight:
-                            isSelected ? FontWeight.bold : FontWeight.normal,
-                        color:
-                            duration == null
-                                ? CupertinoColors.destructiveRed
-                                : (isDark ? Colors.white : Colors.black),
-                      ),
-                    ),
-                    if (isSelected)
-                      Icon(
-                        CupertinoIcons.checkmark,
-                        size: 18,
-                        color:
-                            duration == null
-                                ? CupertinoColors.destructiveRed
-                                : (isDark ? Colors.white : Colors.black),
-                      ),
-                  ],
-                ),
+    showIosPopoverMenu(
+      context: context,
+      isCentered: true,
+      width: 260,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          child: Center(
+            child: Text(
+              'Sleep Timer',
+              style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.bold,
+                color: isDark ? Colors.white : Colors.black,
               ),
             ),
-          );
-        }),
-      );
-
-      if (!isLast) {
-        items.add(
-          Divider(
-            height: 0.5,
-            thickness: 0.5,
-            color:
-                isDark
-                    ? Colors.white.withValues(alpha: 0.15)
-                    : Colors.black.withValues(alpha: 0.1),
           ),
-        );
-      }
-    }
+        ),
+        Divider(
+          height: 0.5,
+          thickness: 0.5,
+          color:
+              isDark
+                  ? Colors.white.withValues(alpha: 0.15)
+                  : Colors.black.withValues(alpha: 0.1),
+        ),
+        ...IosPopoverMenu.buildActionList(
+          isDark: isDark,
+          isFirstGroup: false,
+          isLastGroup: false,
+          actions:
+              options.map((opt) {
+                final duration = opt['duration'] as Duration?;
+                final label = opt['label'] as String;
 
-    _showIOSPopoverMenu(context: context, position: position, items: items);
+                return IosPopoverAction(
+                  title: label,
+                  icon: CupertinoIcons.timer,
+                  isDestructive: duration == null,
+                  trailing: Obx(() {
+                    final currentTimer = controller.sleepTimer.value;
+                    final bool isSelected =
+                        (duration == null && currentTimer == null) ||
+                        (duration != null &&
+                            currentTimer != null &&
+                            currentTimer.inMinutes == duration.inMinutes);
+                    return isSelected
+                        ? Icon(
+                          CupertinoIcons.checkmark,
+                          size: 18,
+                          color:
+                              duration == null
+                                  ? CupertinoColors.destructiveRed
+                                  : primaryColor,
+                        )
+                        : const SizedBox.shrink();
+                  }),
+                  onTap: () {
+                    controller.setSleepTimer(duration);
+                    Navigator.pop(context);
+                  },
+                );
+              }).toList(),
+        ),
+      ],
+    );
   }
 }
 
@@ -450,7 +334,7 @@ class _SpeedListTile extends StatelessWidget {
   final AudioController audioController;
   final Color primaryColor;
   final bool isDark;
-  final Function(BuildContext, Offset) onOpenPopover;
+  final Function(BuildContext) onOpenPopover;
   final Widget Function(IconData, Color) buildIcon;
 
   const _SpeedListTile({
@@ -497,9 +381,7 @@ class _SpeedListTile extends StatelessWidget {
               ],
             ),
             onTap: () {
-              final box = tileContext.findRenderObject() as RenderBox;
-              final offset = box.localToGlobal(Offset.zero);
-              onOpenPopover(context, offset);
+              onOpenPopover(context);
             },
           );
         });
@@ -513,7 +395,7 @@ class _SleepTimerListTile extends StatelessWidget {
   final AudioController audioController;
   final Color primaryColor;
   final bool isDark;
-  final Function(BuildContext, Offset) onOpenPopover;
+  final Function(BuildContext) onOpenPopover;
   final Widget Function(IconData, Color) buildIcon;
 
   const _SleepTimerListTile({
@@ -558,9 +440,7 @@ class _SleepTimerListTile extends StatelessWidget {
               ],
             ),
             onTap: () {
-              final box = tileContext.findRenderObject() as RenderBox;
-              final offset = box.localToGlobal(Offset.zero);
-              onOpenPopover(context, offset);
+              onOpenPopover(context);
             },
           );
         });

@@ -43,6 +43,7 @@ class RhythmAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler
   final List<Song> _rawQueue = [];
 
   bool _isUpdatingQueue = false;
+  double _speed = 1.0;
 
   Timer? _sleepTimer;
   final _sleepTimerSubject = BehaviorSubject<Duration?>.seeded(null);
@@ -62,8 +63,9 @@ class RhythmAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler
   void _initPlayer() async {
     try {
       await _player.setAudioSource(_playlist);
+      await _player.setSpeed(_speed);
     } catch (e) {
-      debugPrint("Error setting initial audio source: $e");
+      debugPrint("Error setting initial audio source or speed: $e");
     }
 
     _player.playerStateStream.listen((playerState) {
@@ -129,7 +131,7 @@ class RhythmAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler
         processingState: _mapProcessingState(processingState),
         updatePosition: _player.position,
         bufferedPosition: _player.bufferedPosition,
-        speed: _player.speed,
+        speed: _speed,
       ),
     );
   }
@@ -171,6 +173,12 @@ class RhythmAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler
       await _playlist.clear();
       await _playlist.addAll(sources);
       await _player.seek(Duration.zero, index: validIndex);
+      
+      try {
+        await _player.setSpeed(_speed);
+      } catch (e) {
+        debugPrint('Error re-applying speed on player: $e');
+      }
       
       // Start playing in background without blocking this Future's completion
       _player.play();
@@ -310,7 +318,12 @@ class RhythmAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler
 
   @override
   Future<void> setSpeed(double speed) async {
-    await _player.setSpeed(speed);
+    _speed = speed;
+    try {
+      await _player.setSpeed(speed);
+    } catch (e) {
+      debugPrint('Error setting speed on player: $e');
+    }
     playbackState.add(playbackState.value.copyWith(speed: speed));
   }
 

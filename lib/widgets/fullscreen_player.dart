@@ -1,4 +1,5 @@
 import 'dart:ui';
+
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -9,6 +10,7 @@ import '../controllers/favorites_controller.dart';
 import '../controllers/library_controller.dart';
 import '../core/models/song_model.dart';
 import 'artwork_widget.dart';
+import 'ios_popover_menu.dart';
 
 class FullScreenPlayer extends StatefulWidget {
   const FullScreenPlayer({super.key});
@@ -176,20 +178,29 @@ class _FullScreenPlayerState extends State<FullScreenPlayer>
                           ),
                         ],
                       ),
-                      IconButton(
-                        icon: Icon(
-                          CupertinoIcons.ellipsis,
-                          size: 22,
-                          color: isDark ? Colors.white70 : Colors.black87,
-                        ),
-                        onPressed:
-                            () => _showIosOptionsDialog(
-                              context,
-                              audioController,
-                              favoritesController,
-                              currentSong,
-                              primaryColor,
+                      Builder(
+                        builder: (btnContext) {
+                          return IconButton(
+                            icon: Icon(
+                              CupertinoIcons.ellipsis,
+                              size: 22,
+                              color: isDark ? Colors.white70 : Colors.black87,
                             ),
+                            onPressed: () {
+                              final box =
+                                  btnContext.findRenderObject() as RenderBox;
+                              final offset = box.localToGlobal(Offset.zero);
+                              _showIosOptionsDialog(
+                                context,
+                                offset,
+                                audioController,
+                                favoritesController,
+                                currentSong,
+                                primaryColor,
+                              );
+                            },
+                          );
+                        },
                       ),
                     ],
                   ),
@@ -559,6 +570,7 @@ class _FullScreenPlayerState extends State<FullScreenPlayer>
 
 void _showIosOptionsDialog(
   BuildContext context,
+  Offset position,
   AudioController controller,
   FavoritesController favs,
   dynamic song,
@@ -567,152 +579,85 @@ void _showIosOptionsDialog(
   if (song == null) return;
   HapticFeedback.mediumImpact();
 
-  showGeneralDialog(
-    context: context,
-    barrierDismissible: true,
-    barrierLabel: 'Dismiss',
-    barrierColor: Colors.black.withValues(alpha: 0.4),
-    transitionDuration: const Duration(milliseconds: 250),
-    pageBuilder: (_, __, ___) => const SizedBox.shrink(),
-    transitionBuilder: (context, animation, secondaryAnimation, child) {
-      final curve = CurvedAnimation(
-        parent: animation,
-        curve: Curves.easeOutCubic,
-      );
-      final isDark = Theme.of(context).brightness == Brightness.dark;
-      final isFav = favs.isFavorite(song.id);
+  final isDark = Theme.of(context).brightness == Brightness.dark;
+  final isFav = favs.isFavorite(song.id);
 
-      return ScaleTransition(
-        scale: Tween<double>(begin: 0.9, end: 1.0).animate(curve),
-        child: FadeTransition(
-          opacity: curve,
-          child: Dialog(
-            backgroundColor: Colors.transparent,
-            insetPadding: const EdgeInsets.symmetric(horizontal: 24),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(22),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
-                child: Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color:
-                        isDark
-                            ? const Color(0xFF252525).withValues(alpha: 0.85)
-                            : Colors.white.withValues(alpha: 0.85),
-                    borderRadius: BorderRadius.circular(22),
-                    border: Border.all(
-                      color:
-                          isDark
-                              ? Colors.white10
-                              : Colors.black.withValues(alpha: 0.05),
+  showIosPopoverMenu(
+    context: context,
+    position: position,
+    isCentered: false,
+    width: 250,
+    children: [
+      Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            ArtworkWidget(
+              songId: song.id,
+              artworkUrl: song.artwork,
+              size: 48,
+              borderRadius: 10,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    song.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? Colors.white : Colors.black,
                     ),
                   ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Row(
-                        children: [
-                          ArtworkWidget(
-                            songId: song.id,
-                            artworkUrl: song.artwork,
-                            size: 48,
-                            borderRadius: 10,
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  song.title,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    color: isDark ? Colors.white : Colors.black,
-                                  ),
-                                ),
-                                Text(
-                                  song.artist,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color:
-                                        isDark
-                                            ? Colors.white54
-                                            : Colors.black54,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      Divider(
-                        height: 1,
-                        color: isDark ? Colors.white12 : Colors.black12,
-                      ),
-                      const SizedBox(height: 8),
-                      _buildDialogAction(
-                        context: context,
-                        icon:
-                            isFav
-                                ? CupertinoIcons.heart_fill
-                                : CupertinoIcons.heart,
-                        iconColor: isFav ? primaryColor : null,
-                        title: isFav ? 'Remove Favorite' : 'Favorite Song',
-                        isDark: isDark,
-                        onTap: () {
-                          favs.toggleFavoriteSong(song);
-                          Navigator.pop(context);
-                        },
-                      ),
-                      _buildDialogAction(
-                        context: context,
-                        icon: CupertinoIcons.text_insert,
-                        title: 'Play Next',
-                        isDark: isDark,
-                        onTap: () {
-                          controller.playNext(song);
-                          Navigator.pop(context);
-                        },
-                      ),
-                      const SizedBox(height: 8),
-                      Divider(
-                        height: 1,
-                        color: isDark ? Colors.white12 : Colors.black12,
-                      ),
-                      const SizedBox(height: 8),
-                      InkWell(
-                        borderRadius: BorderRadius.circular(12),
-                        onTap: () => Navigator.pop(context),
-                        child: Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          alignment: Alignment.center,
-                          child: Text(
-                            'Cancel',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: primaryColor,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
+                  Text(
+                    song.artist,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: isDark ? Colors.white54 : Colors.black54,
+                    ),
                   ),
-                ),
+                ],
               ),
             ),
-          ),
+          ],
         ),
-      );
-    },
+      ),
+      Divider(
+        height: 0.5,
+        thickness: 0.5,
+        color: isDark ? Colors.white12 : Colors.black12,
+      ),
+      ...IosPopoverMenu.buildActionList(
+        isDark: isDark,
+        isFirstGroup: false,
+        isLastGroup: false,
+        actions: [
+          IosPopoverAction(
+            title: isFav ? 'Remove Favorite' : 'Favorite Song',
+            icon: isFav ? CupertinoIcons.heart_fill : CupertinoIcons.heart,
+            iconColor: isFav ? primaryColor : null,
+            onTap: () {
+              favs.toggleFavoriteSong(song);
+              Navigator.pop(context);
+            },
+          ),
+          IosPopoverAction(
+            title: 'Play Next',
+            icon: CupertinoIcons.text_insert,
+            onTap: () {
+              controller.playNext(song);
+              Navigator.pop(context);
+            },
+          ),
+        ],
+      ),
+    ],
   );
 }
 
@@ -722,114 +667,58 @@ void _showIosSpeedDialog(
   Color primaryColor,
 ) {
   HapticFeedback.mediumImpact();
-  showGeneralDialog(
-    context: context,
-    barrierDismissible: true,
-    barrierLabel: 'Dismiss',
-    barrierColor: Colors.black.withValues(alpha: 0.4),
-    transitionDuration: const Duration(milliseconds: 250),
-    pageBuilder: (_, __, ___) => const SizedBox.shrink(),
-    transitionBuilder: (context, animation, secondaryAnimation, child) {
-      final curve = CurvedAnimation(
-        parent: animation,
-        curve: Curves.easeOutCubic,
-      );
-      final isDark = Theme.of(context).brightness == Brightness.dark;
+  final isDark = Theme.of(context).brightness == Brightness.dark;
 
-      return ScaleTransition(
-        scale: Tween<double>(begin: 0.9, end: 1.0).animate(curve),
-        child: FadeTransition(
-          opacity: curve,
-          child: Dialog(
-            backgroundColor: Colors.transparent,
-            insetPadding: const EdgeInsets.symmetric(horizontal: 24),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(22),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
-                child: Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color:
-                        isDark
-                            ? const Color(0xFF252525).withValues(alpha: 0.85)
-                            : Colors.white.withValues(alpha: 0.85),
-                    borderRadius: BorderRadius.circular(22),
-                    border: Border.all(
-                      color:
-                          isDark
-                              ? Colors.white10
-                              : Colors.black.withValues(alpha: 0.05),
-                    ),
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        'Playback Speed',
-                        style: TextStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.bold,
-                          color: isDark ? Colors.white : Colors.black,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Divider(
-                        height: 1,
-                        color: isDark ? Colors.white12 : Colors.black12,
-                      ),
-                      const SizedBox(height: 8),
-                      ...[0.5, 0.75, 1.0, 1.25, 1.5, 2.0].map((s) {
-                        return Obx(() {
-                          final isSelected = controller.speed.value == s;
-                          return _buildDialogAction(
-                            context: context,
-                            icon:
-                                isSelected
-                                    ? CupertinoIcons.checkmark_alt
-                                    : CupertinoIcons.speedometer,
-                            iconColor: isSelected ? primaryColor : null,
-                            title: '${s}x Speed',
-                            isDark: isDark,
-                            onTap: () {
-                              controller.setSpeed(s);
-                              Navigator.pop(context);
-                            },
-                          );
-                        });
-                      }),
-                      const SizedBox(height: 8),
-                      Divider(
-                        height: 1,
-                        color: isDark ? Colors.white12 : Colors.black12,
-                      ),
-                      const SizedBox(height: 8),
-                      InkWell(
-                        borderRadius: BorderRadius.circular(12),
-                        onTap: () => Navigator.pop(context),
-                        child: Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          alignment: Alignment.center,
-                          child: Text(
-                            'Cancel',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: primaryColor,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+  showIosPopoverMenu(
+    context: context,
+    isCentered: true,
+    width: 260,
+    children: [
+      Padding(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        child: Center(
+          child: Text(
+            'Playback Speed',
+            style: TextStyle(
+              fontSize: 17,
+              fontWeight: FontWeight.bold,
+              color: isDark ? Colors.white : Colors.black,
             ),
           ),
         ),
-      );
-    },
+      ),
+      Divider(
+        height: 0.5,
+        thickness: 0.5,
+        color: isDark ? Colors.white12 : Colors.black12,
+      ),
+      ...IosPopoverMenu.buildActionList(
+        isDark: isDark,
+        isFirstGroup: false,
+        isLastGroup: false,
+        actions:
+            [0.5, 0.75, 1.0, 1.25, 1.5, 2.0].map((s) {
+              return IosPopoverAction(
+                title: '${s}x Speed',
+                icon: CupertinoIcons.speedometer,
+                trailing: Obx(() {
+                  final isSelected = controller.speed.value == s;
+                  return isSelected
+                      ? Icon(
+                        CupertinoIcons.checkmark,
+                        size: 18,
+                        color: primaryColor,
+                      )
+                      : const SizedBox.shrink();
+                }),
+                onTap: () {
+                  controller.setSpeed(s);
+                  Navigator.pop(context);
+                },
+              );
+            }).toList(),
+      ),
+    ],
   );
 }
 
@@ -839,176 +728,72 @@ void _showIosSleepTimerDialog(
   Color primaryColor,
 ) {
   HapticFeedback.mediumImpact();
-  showGeneralDialog(
-    context: context,
-    barrierDismissible: true,
-    barrierLabel: 'Dismiss',
-    barrierColor: Colors.black.withValues(alpha: 0.4),
-    transitionDuration: const Duration(milliseconds: 250),
-    pageBuilder: (_, __, ___) => const SizedBox.shrink(),
-    transitionBuilder: (context, animation, secondaryAnimation, child) {
-      final curve = CurvedAnimation(
-        parent: animation,
-        curve: Curves.easeOutCubic,
-      );
-      final isDark = Theme.of(context).brightness == Brightness.dark;
+  final isDark = Theme.of(context).brightness == Brightness.dark;
 
-      return ScaleTransition(
-        scale: Tween<double>(begin: 0.9, end: 1.0).animate(curve),
-        child: FadeTransition(
-          opacity: curve,
-          child: Dialog(
-            backgroundColor: Colors.transparent,
-            insetPadding: const EdgeInsets.symmetric(horizontal: 24),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(22),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
-                child: Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color:
-                        isDark
-                            ? const Color(0xFF252525).withValues(alpha: 0.85)
-                            : Colors.white.withValues(alpha: 0.85),
-                    borderRadius: BorderRadius.circular(22),
-                    border: Border.all(
-                      color:
-                          isDark
-                              ? Colors.white10
-                              : Colors.black.withValues(alpha: 0.05),
-                    ),
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        'Sleep Timer',
-                        style: TextStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.bold,
-                          color: isDark ? Colors.white : Colors.black,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Divider(
-                        height: 1,
-                        color: isDark ? Colors.white12 : Colors.black12,
-                      ),
-                      const SizedBox(height: 8),
-                      _buildDialogAction(
-                        context: context,
-                        icon: CupertinoIcons.clear_circled,
-                        title: 'Off',
-                        isDark: isDark,
-                        onTap: () {
-                          controller.setSleepTimer(null);
-                          Navigator.pop(context);
-                        },
-                      ),
-                      _buildDialogAction(
-                        context: context,
-                        icon: CupertinoIcons.timer,
-                        title: '15 Minutes',
-                        isDark: isDark,
-                        onTap: () {
-                          controller.setSleepTimer(const Duration(minutes: 15));
-                          Navigator.pop(context);
-                        },
-                      ),
-                      _buildDialogAction(
-                        context: context,
-                        icon: CupertinoIcons.timer,
-                        title: '30 Minutes',
-                        isDark: isDark,
-                        onTap: () {
-                          controller.setSleepTimer(const Duration(minutes: 30));
-                          Navigator.pop(context);
-                        },
-                      ),
-                      _buildDialogAction(
-                        context: context,
-                        icon: CupertinoIcons.timer,
-                        title: '60 Minutes',
-                        isDark: isDark,
-                        onTap: () {
-                          controller.setSleepTimer(const Duration(minutes: 60));
-                          Navigator.pop(context);
-                        },
-                      ),
-                      const SizedBox(height: 8),
-                      Divider(
-                        height: 1,
-                        color: isDark ? Colors.white12 : Colors.black12,
-                      ),
-                      const SizedBox(height: 8),
-                      InkWell(
-                        borderRadius: BorderRadius.circular(12),
-                        onTap: () => Navigator.pop(context),
-                        child: Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          alignment: Alignment.center,
-                          child: Text(
-                            'Cancel',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: primaryColor,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+  showIosPopoverMenu(
+    context: context,
+    isCentered: true,
+    width: 260,
+    children: [
+      Padding(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        child: Center(
+          child: Text(
+            'Sleep Timer',
+            style: TextStyle(
+              fontSize: 17,
+              fontWeight: FontWeight.bold,
+              color: isDark ? Colors.white : Colors.black,
             ),
           ),
         ),
-      );
-    },
-  );
-}
-
-Widget _buildDialogAction({
-  required BuildContext context,
-  required IconData icon,
-  required String title,
-  required bool isDark,
-  required VoidCallback onTap,
-  Color? iconColor,
-}) {
-  return Material(
-    color: Colors.transparent,
-    child: InkWell(
-      borderRadius: BorderRadius.circular(12),
-      onTap: () {
-        HapticFeedback.selectionClick();
-        onTap();
-      },
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 8),
-        child: Row(
-          children: [
-            Icon(
-              icon,
-              size: 20,
-              color: iconColor ?? (isDark ? Colors.white70 : Colors.black87),
-            ),
-            const SizedBox(width: 14),
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w500,
-                color: isDark ? Colors.white : Colors.black87,
-              ),
-            ),
-          ],
-        ),
       ),
-    ),
+      Divider(
+        height: 0.5,
+        thickness: 0.5,
+        color: isDark ? Colors.white12 : Colors.black12,
+      ),
+      ...IosPopoverMenu.buildActionList(
+        isDark: isDark,
+        isFirstGroup: false,
+        isLastGroup: false,
+        actions: [
+          IosPopoverAction(
+            title: 'Off',
+            icon: CupertinoIcons.clear_circled,
+            isDestructive: true,
+            onTap: () {
+              controller.setSleepTimer(null);
+              Navigator.pop(context);
+            },
+          ),
+          IosPopoverAction(
+            title: '15 Minutes',
+            icon: CupertinoIcons.timer,
+            onTap: () {
+              controller.setSleepTimer(const Duration(minutes: 15));
+              Navigator.pop(context);
+            },
+          ),
+          IosPopoverAction(
+            title: '30 Minutes',
+            icon: CupertinoIcons.timer,
+            onTap: () {
+              controller.setSleepTimer(const Duration(minutes: 30));
+              Navigator.pop(context);
+            },
+          ),
+          IosPopoverAction(
+            title: '60 Minutes',
+            icon: CupertinoIcons.timer,
+            onTap: () {
+              controller.setSleepTimer(const Duration(minutes: 60));
+              Navigator.pop(context);
+            },
+          ),
+        ],
+      ),
+    ],
   );
 }
 
@@ -1345,7 +1130,7 @@ class _QueueSheetState extends State<QueueSheet> {
           // Star / Favorite Button
           _CircleIconButton(
             icon: isFav ? CupertinoIcons.heart_fill : CupertinoIcons.heart,
-            onTap: () {
+            onTap: (_) {
               favoritesController.toggleFavoriteSong(song);
               setState(() {});
             },
@@ -1355,14 +1140,18 @@ class _QueueSheetState extends State<QueueSheet> {
           // More Options Button
           _CircleIconButton(
             icon: CupertinoIcons.ellipsis,
-            onTap:
-                () => _showIosOptionsDialog(
-                  context,
-                  audioController,
-                  favoritesController,
-                  song,
-                  Theme.of(context).colorScheme.primary,
-                ),
+            onTap: (btnContext) {
+              final box = btnContext.findRenderObject() as RenderBox;
+              final offset = box.localToGlobal(Offset.zero);
+              _showIosOptionsDialog(
+                context,
+                offset,
+                audioController,
+                favoritesController,
+                song,
+                Theme.of(context).colorScheme.primary,
+              );
+            },
           ),
         ],
       ),
@@ -1648,14 +1437,18 @@ class _QueueSheetState extends State<QueueSheet> {
             ),
             _CircleIconButton(
               icon: CupertinoIcons.ellipsis,
-              onTap:
-                  () => _showIosOptionsDialog(
-                    context,
-                    audioController,
-                    favoritesController,
-                    song,
-                    Theme.of(context).colorScheme.primary,
-                  ),
+              onTap: (btnContext) {
+                final box = btnContext.findRenderObject() as RenderBox;
+                final offset = box.localToGlobal(Offset.zero);
+                _showIosOptionsDialog(
+                  context,
+                  offset,
+                  audioController,
+                  favoritesController,
+                  song,
+                  Theme.of(context).colorScheme.primary,
+                );
+              },
             ),
           ],
         ),
@@ -1719,14 +1512,18 @@ class _QueueSheetState extends State<QueueSheet> {
             ),
             _CircleIconButton(
               icon: CupertinoIcons.ellipsis,
-              onTap:
-                  () => _showIosOptionsDialog(
-                    context,
-                    audioController,
-                    favoritesController,
-                    song,
-                    Theme.of(context).colorScheme.primary,
-                  ),
+              onTap: (btnContext) {
+                final box = btnContext.findRenderObject() as RenderBox;
+                final offset = box.localToGlobal(Offset.zero);
+                _showIosOptionsDialog(
+                  context,
+                  offset,
+                  audioController,
+                  favoritesController,
+                  song,
+                  Theme.of(context).colorScheme.primary,
+                );
+              },
             ),
           ],
         ),
@@ -1935,7 +1732,7 @@ class _AddSongsSheetState extends State<AddSongsSheet> {
 /// CIRCULAR ICON BUTTON FOR NOW PLAYING ACTIONS
 class _CircleIconButton extends StatelessWidget {
   final IconData icon;
-  final VoidCallback onTap;
+  final Function(BuildContext) onTap;
 
   const _CircleIconButton({required this.icon, required this.onTap});
 
@@ -1946,7 +1743,7 @@ class _CircleIconButton extends StatelessWidget {
     return InkWell(
       onTap: () {
         HapticFeedback.lightImpact();
-        onTap();
+        onTap(context);
       },
       child: Container(
         width: 36,

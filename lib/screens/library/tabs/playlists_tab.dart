@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -6,6 +5,7 @@ import '../../../controllers/favorites_controller.dart';
 import '../../../controllers/playlist_controller.dart';
 import '../../../controllers/library_controller.dart';
 import '../../../widgets/custom_scroll_animation.dart';
+import '../../../widgets/ios_popover_menu.dart';
 import '../../favorites/favorites_screen.dart';
 import '../../playlists/playlists_screen.dart';
 
@@ -22,165 +22,39 @@ class PlaylistsTab extends StatelessWidget {
   ) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    showGeneralDialog(
+    showIosPopoverMenu(
       context: context,
-      barrierDismissible: true,
-      barrierLabel: 'Dismiss',
-      barrierColor: Colors.black.withValues(alpha: 0.2),
-      transitionDuration: const Duration(milliseconds: 200),
-      pageBuilder: (context, anim1, anim2) {
-        return Stack(
-          children: [
-            Positioned(
-              right: 16,
-              top: position.dy,
-              child: Material(
-                color: Colors.transparent,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(16),
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-                    child: Container(
-                      width: 250,
-                      decoration: BoxDecoration(
-                        color:
-                            isDark
-                                ? const Color(0xFF2C2C2E).withValues(alpha: 0.8)
-                                : Colors.white.withValues(alpha: 0.85),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color:
-                              isDark
-                                  ? Colors.white.withValues(alpha: 0.1)
-                                  : Colors.black.withValues(alpha: 0.05),
-                        ),
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          /// Duplicate Action
-                          Material(
-                            color: Colors.transparent,
-                            child: InkWell(
-                              borderRadius: const BorderRadius.vertical(
-                                top: Radius.circular(16),
-                              ),
-                              onTap: () {
-                                Navigator.pop(context);
-                                controller.duplicatePlaylist(playlist);
-                              },
-                              splashColor:
-                                  isDark ? Colors.white12 : Colors.black12,
-                              highlightColor:
-                                  isDark
-                                      ? Colors.white10
-                                      : Colors.black.withValues(alpha: 0.05),
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 12,
-                                ),
-                                child: Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      'Duplicate',
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        color:
-                                            isDark
-                                                ? Colors.white
-                                                : Colors.black,
-                                      ),
-                                    ),
-                                    Icon(
-                                      CupertinoIcons.doc_on_doc,
-                                      size: 20,
-                                      color:
-                                          isDark ? Colors.white : Colors.black,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                          Divider(
-                            height: 0.5,
-                            thickness: 0.5,
-                            color:
-                                isDark
-                                    ? Colors.white.withValues(alpha: 0.15)
-                                    : Colors.black.withValues(alpha: 0.1),
-                          ),
-
-                          /// Delete Action
-                          Material(
-                            color: Colors.transparent,
-                            child: InkWell(
-                              borderRadius: const BorderRadius.vertical(
-                                bottom: Radius.circular(16),
-                              ),
-                              onTap: () {
-                                Navigator.pop(context);
-                                _showDeleteConfirmation(
-                                  context,
-                                  controller,
-                                  playlist,
-                                );
-                              },
-                              splashColor: CupertinoColors.destructiveRed
-                                  .withValues(alpha: 0.15),
-                              highlightColor: CupertinoColors.destructiveRed
-                                  .withValues(alpha: 0.1),
-                              child: const Padding(
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 12,
-                                ),
-                                child: Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      'Delete Playlist',
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        color: CupertinoColors.destructiveRed,
-                                      ),
-                                    ),
-                                    Icon(
-                                      CupertinoIcons.trash,
-                                      size: 20,
-                                      color: CupertinoColors.destructiveRed,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        );
-      },
-      transitionBuilder: (context, anim1, anim2, child) {
-        return FadeTransition(
-          opacity: anim1,
-          child: ScaleTransition(
-            scale: Tween<double>(begin: 0.9, end: 1.0).animate(
-              CurvedAnimation(parent: anim1, curve: Curves.easeOutBack),
-            ),
-            alignment: Alignment.topRight,
-            child: child,
+      position: position,
+      isCentered: false,
+      width: 250,
+      children: IosPopoverMenu.buildActionList(
+        isDark: isDark,
+        actions: [
+          IosPopoverAction(
+            title: 'Duplicate',
+            icon: CupertinoIcons.doc_on_doc,
+            iconOnRight: true,
+            onTap: () {
+              Navigator.pop(context);
+              controller.duplicatePlaylist(playlist);
+            },
           ),
-        );
-      },
+          IosPopoverAction(
+            title: 'Delete Playlist',
+            icon: CupertinoIcons.trash,
+            iconOnRight: true,
+            isDestructive: true,
+            onTap: () {
+              Navigator.pop(context);
+              _showDeleteConfirmation(
+                context,
+                controller,
+                playlist,
+              );
+            },
+          ),
+        ],
+      ),
     );
   }
 
