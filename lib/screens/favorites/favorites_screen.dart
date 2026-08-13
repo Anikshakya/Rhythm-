@@ -34,14 +34,22 @@ class FavoritesScreen extends StatelessWidget {
     final favoritesController = Get.find<FavoritesController>();
     final audioController = Get.find<AudioController>();
     final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Row(
+        title: Row(
           children: [
-            Icon(CupertinoIcons.heart_fill, color: Color(0xFFFA2D48), size: 24),
-            SizedBox(width: 8),
-            Text('Favorite Songs', style: TextStyle(fontWeight: FontWeight.bold)),
+            Icon(
+              CupertinoIcons.heart_fill,
+              color: colorScheme.primary,
+              size: 24,
+            ),
+            const SizedBox(width: 8),
+            const Text(
+              'Favorite Songs',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
           ],
         ),
         actions: [
@@ -49,7 +57,11 @@ class FavoritesScreen extends StatelessWidget {
             final songs = favoritesController.favoriteSongs;
             if (songs.isEmpty) return const SizedBox.shrink();
             return IconButton(
-              icon: const Icon(CupertinoIcons.play_circle_fill, color: Color(0xFFFA2D48), size: 28),
+              icon: Icon(
+                CupertinoIcons.play_circle_fill,
+                color: colorScheme.primary,
+                size: 28,
+              ),
               onPressed: () {
                 audioController.setQueue(songs, initialIndex: 0);
               },
@@ -67,16 +79,26 @@ class FavoritesScreen extends StatelessWidget {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(CupertinoIcons.heart, size: 64, color: theme.disabledColor),
+                    Icon(
+                      CupertinoIcons.heart,
+                      size: 64,
+                      color: theme.disabledColor,
+                    ),
                     const SizedBox(height: 16),
                     Text(
                       'No Favorites Yet',
-                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: theme.textTheme.titleLarge?.color),
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: colorScheme.onSurface,
+                      ),
                     ),
                     const SizedBox(height: 8),
                     Text(
                       'Tap the heart icon on any song to add it here.',
-                      style: TextStyle(color: theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.6)),
+                      style: TextStyle(
+                        color: colorScheme.onSurface.withOpacity(0.6),
+                      ),
                     ),
                   ],
                 ),
@@ -92,7 +114,11 @@ class FavoritesScreen extends StatelessWidget {
                   song: song,
                   index: index,
                   contextQueue: favSongs,
-                  onTap: () => audioController.playSong(song, contextQueue: favSongs),
+                  onTap:
+                      () => audioController.playSong(
+                        song,
+                        contextQueue: favSongs,
+                      ),
                 );
               },
             );
@@ -102,7 +128,7 @@ class FavoritesScreen extends StatelessWidget {
           Positioned(
             left: 0,
             right: 0,
-            bottom: 0,
+            bottom: 15,
             child: MiniPlayer(
               onTap: () => _navigateToPlayer(context),
               onSwipeUp: () => _navigateToPlayer(context),

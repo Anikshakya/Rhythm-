@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'dart:ui';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -468,10 +467,7 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen>
           Positioned(
             left: 0,
             right: 0,
-            bottom:
-                Platform.isIOS
-                    ? (bottomPadding > 0 ? bottomPadding : 16.0)
-                    : 16.0,
+            bottom: 15,
             child: MiniPlayer(
               onTap: () => _navigateToPlayer(context),
               onSwipeUp: () => _navigateToPlayer(context),

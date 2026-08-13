@@ -11,10 +11,7 @@ import '../../widgets/song_tile.dart';
 class PlaylistsScreen extends StatelessWidget {
   final VoidCallback onNavigateToPlayer;
 
-  const PlaylistsScreen({
-    super.key,
-    required this.onNavigateToPlayer,
-  });
+  const PlaylistsScreen({super.key, required this.onNavigateToPlayer});
 
   @override
   Widget build(BuildContext context) {
@@ -22,7 +19,10 @@ class PlaylistsScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Playlists', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text(
+          'Playlists',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
       ),
       body: Obx(() {
         if (playlistController.isLoading.value) {
@@ -47,9 +47,15 @@ class PlaylistsScreen extends StatelessWidget {
                   color: Colors.grey[800],
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(CupertinoIcons.music_albums, color: Colors.white),
+                child: const Icon(
+                  CupertinoIcons.music_albums,
+                  color: Colors.white,
+                ),
               ),
-              title: Text(playlist.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+              title: Text(
+                playlist.name,
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
               subtitle: Text('${playlist.songCount} songs'),
               onTap: () {
                 Get.to(() => PlaylistDetailScreen(playlist: playlist));
@@ -96,7 +102,11 @@ class PlaylistDetailScreen extends StatelessWidget {
         title: Text(playlist.name),
         actions: [
           IconButton(
-            icon: const Icon(CupertinoIcons.play_circle_fill, color: Color(0xFFFA2D48), size: 28),
+            icon: const Icon(
+              CupertinoIcons.play_circle_fill,
+              color: Color(0xFFFA2D48),
+              size: 28,
+            ),
             onPressed: () {
               if (playlist.songs.isNotEmpty) {
                 audioController.setQueue(playlist.songs, initialIndex: 0);
@@ -129,16 +139,26 @@ class PlaylistDetailScreen extends StatelessWidget {
                     color: Colors.redAccent,
                     alignment: Alignment.centerRight,
                     padding: const EdgeInsets.only(right: 20),
-                    child: const Icon(CupertinoIcons.trash, color: Colors.white),
+                    child: const Icon(
+                      CupertinoIcons.trash,
+                      color: Colors.white,
+                    ),
                   ),
                   onDismissed: (_) {
-                    playlistController.removeSongFromPlaylist(playlist.id, song.id);
+                    playlistController.removeSongFromPlaylist(
+                      playlist.id,
+                      song.id,
+                    );
                   },
                   child: SongTile(
                     song: song,
                     index: index,
                     contextQueue: currentPlaylist.songs,
-                    onTap: () => audioController.playSong(song, contextQueue: currentPlaylist.songs),
+                    onTap:
+                        () => audioController.playSong(
+                          song,
+                          contextQueue: currentPlaylist.songs,
+                        ),
                   ),
                 );
               },
@@ -149,7 +169,7 @@ class PlaylistDetailScreen extends StatelessWidget {
           Positioned(
             left: 0,
             right: 0,
-            bottom: 0,
+            bottom: 10,
             child: MiniPlayer(
               onTap: () => _navigateToPlayer(context),
               onSwipeUp: () => _navigateToPlayer(context),

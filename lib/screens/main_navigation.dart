@@ -91,7 +91,7 @@ class _MainNavigationState extends State<MainNavigation> {
             right: 0,
             bottom:
                 Platform.isIOS
-                    ? (bottomPadding > 0 ? bottomPadding * 2 : 6 * 2)
+                    ? (bottomPadding > 0 ? bottomPadding * 2 + 4 : 6 * 2)
                     : (bottomPadding > 0 ? bottomPadding * 2 : 58 + 10),
             child: MiniPlayer(
               onTap: _navigateToPlayer,
