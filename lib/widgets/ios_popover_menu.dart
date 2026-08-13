@@ -106,7 +106,14 @@ class IosPopoverAction extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         borderRadius: inkWellBorderRadius,
-        onTap: onTap,
+        onTap: () {
+          // Dismiss the route first to ensure overlay goes away reliably,
+          // then invoke user callback.
+          if (Navigator.of(context).canPop()) {
+            Navigator.of(context).pop();
+          }
+          onTap();
+        },
         splashColor:
             isDestructive
                 ? CupertinoColors.destructiveRed.withValues(alpha: 0.15)
@@ -129,12 +136,32 @@ class IosPopoverAction extends StatelessWidget {
 class IosPopoverMenu extends StatelessWidget {
   final List<Widget> children;
   final double width;
+  final bool isDestructive;
 
-  const IosPopoverMenu({super.key, required this.children, this.width = 250});
+  const IosPopoverMenu({
+    super.key,
+    required this.children,
+    this.width = 250,
+    this.isDestructive = false,
+  });
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final borderColor = isDestructive
+        ? CupertinoColors.destructiveRed.withValues(alpha: 0.3)
+        : (isDark
+            ? Colors.white.withValues(alpha: 0.1)
+            : Colors.black.withValues(alpha: 0.05));
+
+    final backgroundColor = isDestructive
+        ? (isDark
+            ? const Color(0xFF321313).withValues(alpha: 0.88)
+            : const Color(0xFFFFF0F0).withValues(alpha: 0.92))
+        : (isDark
+            ? const Color(0xFF252525).withValues(alpha: 0.85)
+            : Colors.white.withValues(alpha: 0.85));
 
     return Material(
       color: Colors.transparent,
@@ -145,17 +172,9 @@ class IosPopoverMenu extends StatelessWidget {
           child: Container(
             width: width,
             decoration: BoxDecoration(
-              color:
-                  isDark
-                      ? const Color(0xFF252525).withValues(alpha: 0.85)
-                      : Colors.white.withValues(alpha: 0.85),
+              color: backgroundColor,
               borderRadius: BorderRadius.circular(22),
-              border: Border.all(
-                color:
-                    isDark
-                        ? Colors.white.withValues(alpha: 0.1)
-                        : Colors.black.withValues(alpha: 0.05),
-              ),
+              border: Border.all(color: borderColor),
             ),
             child: Column(mainAxisSize: MainAxisSize.min, children: children),
           ),
@@ -170,6 +189,7 @@ class IosPopoverMenu extends StatelessWidget {
     required bool isDark,
     bool isFirstGroup = true,
     bool isLastGroup = true,
+    bool isDestructive = false,
   }) {
     List<Widget> list = [];
     for (int i = 0; i < actions.length; i++) {
@@ -177,17 +197,20 @@ class IosPopoverMenu extends StatelessWidget {
       final isLast = isLastGroup && (i == actions.length - 1);
       final action = actions[i];
 
+      final actionDestructive = action.isDestructive || isDestructive;
+
       list.add(
         IosPopoverAction(
           title: action.title,
           icon: action.icon,
           trailing: action.trailing,
           iconOnRight: action.iconOnRight,
-          isDestructive: action.isDestructive,
+          isDestructive: actionDestructive,
           isFirst: isFirst,
           isLast: isLast,
           onTap: action.onTap,
           iconColor: action.iconColor,
+          textColor: action.textColor,
         ),
       );
 
@@ -196,10 +219,11 @@ class IosPopoverMenu extends StatelessWidget {
           Divider(
             height: 0.5,
             thickness: 0.5,
-            color:
-                isDark
+            color: actionDestructive
+                ? CupertinoColors.destructiveRed.withValues(alpha: 0.2)
+                : (isDark
                     ? Colors.white.withValues(alpha: 0.15)
-                    : Colors.black.withValues(alpha: 0.1),
+                    : Colors.black.withValues(alpha: 0.1)),
           ),
         );
       }
@@ -251,110 +275,81 @@ class _PopoverPositionDelegate extends SingleChildLayoutDelegate {
 }
 
 /// Animated Popover Overlay Wrapper
-class _IosAnimatedPopoverOverlay extends StatefulWidget {
+class _IosAnimatedPopoverOverlay extends StatelessWidget {
   final List<Widget> children;
   final Offset? position;
   final bool isCentered;
+  final bool isDestructive;
   final double width;
-  final VoidCallback onDismiss;
+  final Animation<double> animation;
 
   const _IosAnimatedPopoverOverlay({
     required this.children,
     this.position,
     required this.isCentered,
+    this.isDestructive = false,
     required this.width,
-    required this.onDismiss,
+    required this.animation,
   });
-
-  @override
-  State<_IosAnimatedPopoverOverlay> createState() =>
-      _IosAnimatedPopoverOverlayState();
-}
-
-class _IosAnimatedPopoverOverlayState extends State<_IosAnimatedPopoverOverlay>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _scaleAnimation;
-  late Animation<double> _fadeAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 320),
-      reverseDuration: const Duration(milliseconds: 200),
-    );
-
-    // Modern iOS Spring Bounce Curve
-    _scaleAnimation = Tween<double>(begin: 0.75, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: Curves.elasticOut,
-        reverseCurve: Curves.easeInBack,
-      ),
-    );
-
-    _fadeAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
-
-    _controller.forward();
-  }
-
-  void _handleDismiss() async {
-    await _controller.reverse();
-    widget.onDismiss();
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
     final mediaQuery = MediaQuery.of(context);
 
+    final scaleAnimation = Tween<double>(begin: 0.75, end: 1.0).animate(
+      CurvedAnimation(
+        parent: animation,
+        curve: Curves.elasticOut,
+        reverseCurve: Curves.easeInBack,
+      ),
+    );
+
+    final fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: animation, curve: Curves.easeOut),
+    );
+
     Widget menuWidget = AnimatedBuilder(
-      animation: _controller,
+      animation: animation,
       builder: (context, child) {
         return FadeTransition(
-          opacity: _fadeAnimation,
+          opacity: fadeAnimation,
           child: ScaleTransition(
-            scale: _scaleAnimation,
-            alignment:
-                widget.isCentered ? Alignment.center : Alignment.topRight,
+            scale: scaleAnimation,
+            alignment: isCentered ? Alignment.center : Alignment.topRight,
             child: IosPopoverMenu(
-              width: widget.width,
-              children: widget.children,
+              width: width,
+              isDestructive: isDestructive,
+              children: children,
             ),
           ),
         );
       },
     );
 
+    final barrierColor = isDestructive
+        ? CupertinoColors.destructiveRed.withValues(alpha: 0.1)
+        : Colors.black.withValues(alpha: isCentered ? 0.4 : 0.01);
+
     return Stack(
       children: [
-        // Barrier backdrop
+        // Barrier backdrop tap listener
         GestureDetector(
-          onTap: _handleDismiss,
+          onTap: () {
+            if (Navigator.of(context).canPop()) {
+              Navigator.of(context).pop();
+            }
+          },
           behavior: HitTestBehavior.translucent,
           child: AnimatedBuilder(
-            animation: _fadeAnimation,
+            animation: fadeAnimation,
             builder: (context, child) {
               return Container(
-                color: Colors.black.withValues(
-                  alpha:
-                      (widget.isCentered ? 0.4 : 0.01) * _fadeAnimation.value,
-                ),
+                color: barrierColor.withOpacity(barrierColor.opacity * fadeAnimation.value),
               );
             },
           ),
         ),
-        if (widget.isCentered)
+        if (isCentered)
           Center(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -364,7 +359,7 @@ class _IosAnimatedPopoverOverlayState extends State<_IosAnimatedPopoverOverlay>
         else
           CustomSingleChildLayout(
             delegate: _PopoverPositionDelegate(
-              targetOffset: widget.position ?? const Offset(0, 100),
+              targetOffset: position ?? const Offset(0, 100),
               padding: mediaQuery.padding,
             ),
             child: menuWidget,
@@ -380,22 +375,24 @@ void showIosPopoverMenu({
   required List<Widget> children,
   Offset? position,
   bool isCentered = false,
+  bool isDestructive = false,
   double width = 250,
 }) {
-  final overlayState = Overlay.of(context);
-  late OverlayEntry overlayEntry;
-
-  overlayEntry = OverlayEntry(
-    builder: (BuildContext overlayContext) {
+  showGeneralDialog(
+    context: context,
+    barrierDismissible: true,
+    barrierLabel: 'Dismiss Popover',
+    barrierColor: Colors.transparent,
+    transitionDuration: const Duration(milliseconds: 320),
+    pageBuilder: (dialogContext, animation, secondaryAnimation) {
       return _IosAnimatedPopoverOverlay(
         position: position,
         isCentered: isCentered,
+        isDestructive: isDestructive,
         width: width,
-        onDismiss: () => overlayEntry.remove(),
+        animation: animation,
         children: children,
       );
     },
   );
-
-  overlayState.insert(overlayEntry);
 }

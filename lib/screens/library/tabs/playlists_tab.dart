@@ -35,7 +35,6 @@ class PlaylistsTab extends StatelessWidget {
             icon: CupertinoIcons.doc_on_doc,
             iconOnRight: true,
             onTap: () {
-              Navigator.pop(context);
               controller.duplicatePlaylist(playlist);
             },
           ),
@@ -45,12 +44,7 @@ class PlaylistsTab extends StatelessWidget {
             iconOnRight: true,
             isDestructive: true,
             onTap: () {
-              Navigator.pop(context);
-              _showDeleteConfirmation(
-                context,
-                controller,
-                playlist,
-              );
+              _showDeleteConfirmation(context, controller, playlist);
             },
           ),
         ],
