@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:ui';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -69,11 +70,15 @@ class AlbumsTab extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
-                    child: ArtworkWidget(
-                      songId: songs.first.id,
-                      artworkUrl: sampleArt,
-                      size: double.infinity,
-                      borderRadius: 16,
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        return ArtworkWidget(
+                          songId: songs.first.id,
+                          artworkUrl: sampleArt,
+                          size: constraints.maxWidth,
+                          borderRadius: 16,
+                        );
+                      },
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -174,11 +179,15 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen>
             )
             .artwork;
 
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
+
     return Scaffold(
       body: Stack(
         children: [
           CustomScrollView(
-            physics: const BouncingScrollPhysics(),
+            physics: const AlwaysScrollableScrollPhysics(
+              parent: BouncingScrollPhysics(),
+            ),
             slivers: [
               SliverAppBar(
                 expandedHeight: 280.0,
@@ -195,20 +204,39 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen>
                 flexibleSpace: LayoutBuilder(
                   builder: (context, constraints) {
                     final top = constraints.biggest.height;
-                    final isCollapsed =
-                        top <=
-                        kToolbarHeight +
-                            MediaQuery.of(context).padding.top +
-                            20;
-                    final double percent = ((top -
-                                (kToolbarHeight +
-                                    MediaQuery.of(context).padding.top)) /
-                            (280.0 -
-                                (kToolbarHeight +
-                                    MediaQuery.of(context).padding.top)))
-                        .clamp(0.0, 1.0);
+                    final topPadding = MediaQuery.of(context).padding.top;
+                    final minHeight = kToolbarHeight + topPadding;
+                    final delta = 280.0 - minHeight;
+
+                    final double rawPercent =
+                        delta > 0 ? ((top - minHeight) / delta) : 0.0;
+                    final double percent = rawPercent.clamp(0.0, 1.0);
+                    final isCollapsed = percent <= 0.1;
+
+                    final double artworkSize = (132.0 * percent).clamp(
+                      24.0,
+                      132.0,
+                    );
 
                     return FlexibleSpaceBar(
+                      centerTitle: true,
+                      title: IgnorePointer(
+                        ignoring: !isCollapsed,
+                        child: AnimatedOpacity(
+                          duration: const Duration(milliseconds: 150),
+                          opacity: isCollapsed ? 1.0 : 0.0,
+                          child: Text(
+                            widget.albumName,
+                            style: TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.bold,
+                              color: isDark ? Colors.white : Colors.black,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ),
                       background: Stack(
                         fit: StackFit.expand,
                         children: [
@@ -228,64 +256,51 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen>
                               ),
                             ),
                           ],
-                          Opacity(
-                            opacity: percent,
-                            child: Padding(
-                              padding: EdgeInsets.only(
-                                top: MediaQuery.of(context).padding.top + 16,
-                              ),
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  ArtworkWidget(
-                                    songId: typedSongs.first.id,
-                                    artworkUrl: sampleArt,
-                                    size: 132 * percent,
-                                    borderRadius: 16,
-                                  ),
-                                  const SizedBox(height: 12),
-                                  Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 24,
+                          if (percent > 0.1)
+                            Opacity(
+                              opacity: ((percent - 0.1) / 0.9).clamp(0.0, 1.0),
+                              child: Padding(
+                                padding: EdgeInsets.only(top: topPadding + 16),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    ArtworkWidget(
+                                      songId: typedSongs.first.id,
+                                      artworkUrl: sampleArt,
+                                      size: artworkSize,
+                                      borderRadius: 16,
                                     ),
-                                    child: Text(
-                                      widget.albumName,
-                                      style: const TextStyle(
-                                        fontSize: 22,
-                                        fontWeight: FontWeight.bold,
+                                    const SizedBox(height: 12),
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 24,
                                       ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      textAlign: TextAlign.center,
+                                      child: Text(
+                                        widget.albumName,
+                                        style: const TextStyle(
+                                          fontSize: 22,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        textAlign: TextAlign.center,
+                                      ),
                                     ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    '${typedSongs.first.artist} • ${typedSongs.length} tracks',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      color: theme.textTheme.bodyMedium?.color
-                                          ?.withValues(alpha: 0.6),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      '${typedSongs.first.artist} • ${typedSongs.length} tracks',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        color: theme.textTheme.bodyMedium?.color
+                                            ?.withValues(alpha: 0.6),
+                                      ),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
                             ),
-                          ),
                         ],
                       ),
-                      title:
-                          isCollapsed
-                              ? Text(
-                                widget.albumName,
-                                style: TextStyle(
-                                  fontSize: 17,
-                                  fontWeight: FontWeight.bold,
-                                  color: isDark ? Colors.white : Colors.black,
-                                ),
-                              )
-                              : null,
-                      centerTitle: true,
                     );
                   },
                 ),
@@ -395,7 +410,7 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen>
               ),
 
               /// Track list
-              SliverToBoxAdapter(child: const SizedBox(height: 8)),
+              const SliverToBoxAdapter(child: SizedBox(height: 8)),
 
               SliverList(
                 delegate: SliverChildBuilderDelegate((context, index) {
@@ -441,7 +456,11 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen>
                 }, childCount: typedSongs.length),
               ),
 
-              const SliverToBoxAdapter(child: SizedBox(height: 120)),
+              SliverToBoxAdapter(
+                child: SizedBox(
+                  height: 120 + (bottomPadding > 0 ? bottomPadding : 16),
+                ),
+              ),
             ],
           ),
 
@@ -449,7 +468,10 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen>
           Positioned(
             left: 0,
             right: 0,
-            bottom: 0,
+            bottom:
+                Platform.isIOS
+                    ? (bottomPadding > 0 ? bottomPadding : 16.0)
+                    : 16.0,
             child: MiniPlayer(
               onTap: () => _navigateToPlayer(context),
               onSwipeUp: () => _navigateToPlayer(context),

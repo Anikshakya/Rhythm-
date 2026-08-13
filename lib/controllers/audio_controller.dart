@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'package:audio_service/audio_service.dart';
+import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import '../core/models/song_model.dart';
 import '../core/services/audio_handler.dart';
+import 'library_controller.dart';
 
 class AudioController extends GetxController {
   RhythmAudioHandler get _handler => audioHandler as RhythmAudioHandler;
@@ -16,10 +18,13 @@ class AudioController extends GetxController {
   final Rx<Duration> totalDuration = Duration.zero.obs;
   final RxList<Song> queue = <Song>[].obs;
   final RxDouble speed = 1.0.obs;
+  final RxBool autoplayEnabled = true.obs;
+  final RxList<Song> autoplayQueue = <Song>[].obs;
 
   /// Remaining sleep time. `null` = timer off.
   /// Updated every second while active.
   final Rxn<Duration> sleepTimer = Rxn<Duration>();
+
 
   StreamSubscription? _mediaSub;
   StreamSubscription? _playbackSub;
@@ -34,6 +39,7 @@ class AudioController extends GetxController {
   void onInit() {
     super.onInit();
     _bindAudioHandler();
+    _initAutoplayListener();
   }
 
   void _bindAudioHandler() {
@@ -188,7 +194,57 @@ class AudioController extends GetxController {
     });
   }
 
+  void _initAutoplayListener() {
+    ever(currentSong, (_) => updateAutoplayQueue());
+    ever(queue, (_) => updateAutoplayQueue());
+    ever(autoplayEnabled, (_) => updateAutoplayQueue());
+  }
+
+  void updateAutoplayQueue() {
+    if (!autoplayEnabled.value || currentSong.value == null) {
+      autoplayQueue.clear();
+      return;
+    }
+
+    try {
+      final libraryController = Get.find<LibraryController>();
+      final allSongs = libraryController.songs;
+
+      if (allSongs.isEmpty) {
+        autoplayQueue.clear();
+        return;
+      }
+
+      final current = currentSong.value!;
+      final queueIds = queue.map((s) => s.id).toSet();
+
+      // Filter out songs that are already in the manual queue or are current
+      final availableSongs = allSongs.where((s) => s.id != current.id && !queueIds.contains(s.id)).toList();
+
+      if (availableSongs.isEmpty) {
+        autoplayQueue.clear();
+        return;
+      }
+
+      // Rank/sort songs by similarity: same genre first, then same artist, then same album
+      final similarSongs = availableSongs.where((s) =>
+          (s.genre != null && current.genre != null && s.genre == current.genre) ||
+          s.artist == current.artist ||
+          s.album == current.album).toList();
+
+      similarSongs.shuffle();
+      final otherSongs = availableSongs.where((s) => !similarSongs.contains(s)).toList();
+      otherSongs.shuffle();
+
+      final List<Song> results = [...similarSongs, ...otherSongs];
+      autoplayQueue.assignAll(results.take(15).toList());
+    } catch (e) {
+      debugPrint('Error updating autoplay queue: $e');
+    }
+  }
+
   @override
+
   void onClose() {
     _sleepCountdownTimer?.cancel();
     _mediaSub?.cancel();

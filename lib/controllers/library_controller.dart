@@ -149,4 +149,14 @@ class LibraryController extends GetxController {
       debugPrint('History load error: $e');
     }
   }
+
+  Future<void> clearHistory() async {
+    try {
+      await DatabaseHelper.instance.clearHistory();
+      recentlyPlayed.clear();
+      mostPlayed.clear();
+    } catch (e) {
+      debugPrint('History clear error: $e');
+    }
+  }
 }

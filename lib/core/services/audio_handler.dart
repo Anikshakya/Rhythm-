@@ -2,8 +2,10 @@ import 'dart:async';
 import 'dart:math';
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/foundation.dart';
+import 'package:get/get.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:rxdart/rxdart.dart';
+import '../../controllers/audio_controller.dart';
 import '../database/db_helper.dart';
 import '../models/song_model.dart';
 
@@ -77,11 +79,13 @@ class RhythmAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler
         mediaItem.add(currentSong.toMediaItem());
         DatabaseHelper.instance.recordPlay(currentSong);
         _persistSession();
+        _checkAndAppendAutoplay();
       } else {
         _currentSongSubject.add(null);
         mediaItem.add(null);
       }
     });
+
 
     _player.positionStream.listen((pos) {
       playbackState.add(playbackState.value.copyWith(updatePosition: pos));
@@ -324,7 +328,29 @@ class RhythmAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler
     });
   }
 
+  void _checkAndAppendAutoplay() async {
+    try {
+      final audioController = Get.find<AudioController>();
+      if (!audioController.autoplayEnabled.value) return;
+
+      final currentIndex = _player.currentIndex;
+      if (currentIndex == null) return;
+
+      // If we are playing the last item in the queue, pre-append the first autoplay song
+      if (currentIndex == _rawQueue.length - 1) {
+        final autoplayQueue = audioController.autoplayQueue;
+        if (autoplayQueue.isNotEmpty) {
+          final nextSong = autoplayQueue.first;
+          await addToQueue(nextSong);
+        }
+      }
+    } catch (e) {
+      debugPrint('Error in _checkAndAppendAutoplay: $e');
+    }
+  }
+
   Future<void> _persistSession() async {
+
     try {
       final idx = _player.currentIndex ?? 0;
       final posMs = _player.position.inMilliseconds;

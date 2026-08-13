@@ -9,11 +9,7 @@ class MiniPlayer extends StatelessWidget {
   final VoidCallback onTap;
   final VoidCallback? onSwipeUp;
 
-  const MiniPlayer({
-    super.key,
-    required this.onTap,
-    this.onSwipeUp,
-  });
+  const MiniPlayer({super.key, required this.onTap, this.onSwipeUp});
 
   String _formatCountdown(Duration d) {
     final minutes = d.inMinutes.remainder(60).toString().padLeft(2, '0');
@@ -37,9 +33,10 @@ class MiniPlayer extends StatelessWidget {
 
       final total = audioController.totalDuration.value;
       final current = audioController.position.value;
-      final progress = total.inMilliseconds > 0
-          ? (current.inMilliseconds / total.inMilliseconds).clamp(0.0, 1.0)
-          : 0.0;
+      final progress =
+          total.inMilliseconds > 0
+              ? (current.inMilliseconds / total.inMilliseconds).clamp(0.0, 1.0)
+              : 0.0;
 
       final speed = audioController.speed.value;
       final isCustomSpeed = speed != 1.0;
@@ -51,9 +48,9 @@ class MiniPlayer extends StatelessWidget {
       return Container(
         margin: const EdgeInsets.symmetric(horizontal: 20),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(28),
+          borderRadius: BorderRadius.circular(30),
           child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+            filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
             child: GestureDetector(
               onTap: onTap,
               onVerticalDragEnd: (details) {
@@ -68,21 +65,25 @@ class MiniPlayer extends StatelessWidget {
               },
               child: Container(
                 decoration: BoxDecoration(
-                  color: isDark
-                      ? Colors.black.withValues(alpha:0.55)
-                      : Colors.white.withValues(alpha:0.75),
-                  borderRadius: BorderRadius.circular(28),
+                  color:
+                      isDark
+                          ? Colors.white.withValues(alpha: 0.08)
+                          : Colors.black.withValues(alpha: 0.05),
+                  borderRadius: BorderRadius.circular(30),
                   border: Border.all(
-                    color: isDark
-                        ? Colors.white.withValues(alpha:0.12)
-                        : Colors.black.withValues(alpha:0.08),
+                    color:
+                        isDark
+                            ? Colors.white.withValues(alpha: 0.12)
+                            : Colors.black.withValues(alpha: 0.06),
                     width: 0.5,
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha:0.08),
+                      color: Colors.black.withValues(
+                        alpha: isDark ? 0.3 : 0.08,
+                      ),
                       blurRadius: 15,
-                      offset: const Offset(0, 6),
+                      offset: const Offset(0, 4),
                     ),
                   ],
                 ),
@@ -128,9 +129,10 @@ class MiniPlayer extends StatelessWidget {
                                   overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
                                     fontSize: 11,
-                                    color: isDark
-                                        ? Colors.white60
-                                        : Colors.black54,
+                                    color:
+                                        isDark
+                                            ? Colors.white60
+                                            : Colors.black54,
                                   ),
                                 ),
                               ],
@@ -141,9 +143,11 @@ class MiniPlayer extends StatelessWidget {
                           if (isCustomSpeed) ...[
                             Container(
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 6, vertical: 2),
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
                               decoration: BoxDecoration(
-                                color: primaryColor.withValues(alpha:0.15),
+                                color: primaryColor.withValues(alpha: 0.15),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Text(
@@ -162,9 +166,11 @@ class MiniPlayer extends StatelessWidget {
                           if (isSleepActive) ...[
                             Container(
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 6, vertical: 2),
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
                               decoration: BoxDecoration(
-                                color: primaryColor.withValues(alpha:0.15),
+                                color: primaryColor.withValues(alpha: 0.15),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Row(
@@ -183,7 +189,7 @@ class MiniPlayer extends StatelessWidget {
                                       fontWeight: FontWeight.w600,
                                       color: primaryColor,
                                       fontFeatures: const [
-                                        FontFeature.tabularFigures()
+                                        FontFeature.tabularFigures(),
                                       ],
                                     ),
                                   ),
@@ -229,7 +235,7 @@ class MiniPlayer extends StatelessWidget {
                     // Seamless Bottom Progress Bar
                     ClipRRect(
                       borderRadius: const BorderRadius.vertical(
-                        bottom: Radius.circular(28),
+                        bottom: Radius.circular(30),
                       ),
                       child: LinearProgressIndicator(
                         value: progress,

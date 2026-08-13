@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:ui';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -88,7 +89,10 @@ class _MainNavigationState extends State<MainNavigation> {
           Positioned(
             left: 0,
             right: 0,
-            bottom: 48 + (bottomPadding > 0 ? bottomPadding : 10.0),
+            bottom:
+                Platform.isIOS
+                    ? (bottomPadding > 0 ? bottomPadding * 2 : 6 * 2)
+                    : (bottomPadding > 0 ? bottomPadding * 2 : 58 + 10),
             child: MiniPlayer(
               onTap: _navigateToPlayer,
               onSwipeUp: _navigateToPlayer,
@@ -139,7 +143,10 @@ class _CustomFloatingNavBarState extends State<CustomFloatingNavBar> {
       margin: EdgeInsets.only(
         left: 20,
         right: 20,
-        bottom: bottomInset > 0 ? bottomInset * 0.5 : 8,
+        bottom:
+            Platform.isIOS
+                ? (bottomInset > 0 ? bottomInset * 0.24 : 6)
+                : (bottomInset > 0 ? bottomInset * 0.24 : 6),
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(30),
@@ -149,14 +156,16 @@ class _CustomFloatingNavBarState extends State<CustomFloatingNavBar> {
             height: 58,
             padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
-              color: isDark
-                  ? Colors.white.withValues(alpha: 0.08)
-                  : Colors.black.withValues(alpha: 0.05),
+              color:
+                  isDark
+                      ? Colors.white.withValues(alpha: 0.08)
+                      : Colors.black.withValues(alpha: 0.05),
               borderRadius: BorderRadius.circular(30),
               border: Border.all(
-                color: isDark
-                    ? Colors.white.withValues(alpha: 0.12)
-                    : Colors.black.withValues(alpha: 0.06),
+                color:
+                    isDark
+                        ? Colors.white.withValues(alpha: 0.12)
+                        : Colors.black.withValues(alpha: 0.06),
                 width: 0.5,
               ),
             ),
@@ -166,9 +175,10 @@ class _CustomFloatingNavBarState extends State<CustomFloatingNavBar> {
                 final maxLeft = constraints.maxWidth - itemWidth;
 
                 // Calculate current thumb position based on drag state
-                final double currentLeft = _isDragging
-                    ? (_dragX - (itemWidth / 2)).clamp(0.0, maxLeft)
-                    : widget.selectedIndex * itemWidth;
+                final double currentLeft =
+                    _isDragging
+                        ? (_dragX - (itemWidth / 2)).clamp(0.0, maxLeft)
+                        : widget.selectedIndex * itemWidth;
 
                 return GestureDetector(
                   behavior: HitTestBehavior.opaque,
@@ -188,9 +198,10 @@ class _CustomFloatingNavBarState extends State<CustomFloatingNavBar> {
                       _isDragging = false;
                     });
                     // Calculate nearest segment target upon finger release
-                    final targetIndex = (_dragX / itemWidth)
-                        .floor()
-                        .clamp(0, widget.items.length - 1);
+                    final targetIndex = (_dragX / itemWidth).floor().clamp(
+                      0,
+                      widget.items.length - 1,
+                    );
                     widget.onTap(targetIndex);
                   },
                   onHorizontalDragCancel: () {
@@ -210,14 +221,14 @@ class _CustomFloatingNavBarState extends State<CustomFloatingNavBar> {
                         width: itemWidth,
                         child: Container(
                           decoration: BoxDecoration(
-                            color: isDark
-                                ? const Color(0xFF636366)
-                                : Colors.white,
+                            color:
+                                isDark ? const Color(0xFF636366) : Colors.white,
                             borderRadius: BorderRadius.circular(26),
                             boxShadow: [
                               BoxShadow(
                                 color: Colors.black.withValues(
-                                    alpha: isDark ? 0.3 : 0.12),
+                                  alpha: isDark ? 0.3 : 0.12,
+                                ),
                                 blurRadius: 10,
                                 offset: const Offset(0, 3),
                               ),
@@ -230,11 +241,13 @@ class _CustomFloatingNavBarState extends State<CustomFloatingNavBar> {
                       Row(
                         children: List.generate(widget.items.length, (index) {
                           // Highlight item based on current thumb center position during drag
-                          final currentActiveIndex = _isDragging
-                              ? (_dragX / itemWidth)
-                                  .floor()
-                                  .clamp(0, widget.items.length - 1)
-                              : widget.selectedIndex;
+                          final currentActiveIndex =
+                              _isDragging
+                                  ? (_dragX / itemWidth).floor().clamp(
+                                    0,
+                                    widget.items.length - 1,
+                                  )
+                                  : widget.selectedIndex;
 
                           final isSelected = currentActiveIndex == index;
                           final item = widget.items[index];
@@ -250,30 +263,41 @@ class _CustomFloatingNavBarState extends State<CustomFloatingNavBar> {
                                   children: [
                                     AnimatedScale(
                                       scale: isSelected ? 1.1 : 1.0,
-                                      duration: const Duration(milliseconds: 180),
+                                      duration: const Duration(
+                                        milliseconds: 180,
+                                      ),
                                       child: Icon(
                                         item.icon,
-                                        color: isSelected
-                                            ? (isDark ? Colors.white : Colors.black)
-                                            : (isDark
-                                                ? Colors.white54
-                                                : Colors.black45),
+                                        color:
+                                            isSelected
+                                                ? (isDark
+                                                    ? Colors.white
+                                                    : Colors.black)
+                                                : (isDark
+                                                    ? Colors.white54
+                                                    : Colors.black45),
                                         size: 19,
                                       ),
                                     ),
                                     const SizedBox(height: 2),
                                     AnimatedDefaultTextStyle(
-                                      duration: const Duration(milliseconds: 180),
+                                      duration: const Duration(
+                                        milliseconds: 180,
+                                      ),
                                       style: TextStyle(
                                         fontSize: 10.5,
-                                        fontWeight: isSelected
-                                            ? FontWeight.w600
-                                            : FontWeight.w400,
-                                        color: isSelected
-                                            ? (isDark ? Colors.white : Colors.black)
-                                            : (isDark
-                                                ? Colors.white54
-                                                : Colors.black45),
+                                        fontWeight:
+                                            isSelected
+                                                ? FontWeight.w600
+                                                : FontWeight.w400,
+                                        color:
+                                            isSelected
+                                                ? (isDark
+                                                    ? Colors.white
+                                                    : Colors.black)
+                                                : (isDark
+                                                    ? Colors.white54
+                                                    : Colors.black45),
                                       ),
                                       child: Text(item.label),
                                     ),

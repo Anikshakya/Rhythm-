@@ -260,6 +260,11 @@ class DatabaseHelper {
     return res.map((row) => Song.fromJson(jsonDecode(row['song_json'] as String))).toList();
   }
 
+  Future<void> clearHistory() async {
+    final db = await instance.database;
+    await db.delete('history');
+  }
+
   // ==================== QUEUE SESSION PERSISTENCE ====================
 
   Future<void> saveQueueSession({
