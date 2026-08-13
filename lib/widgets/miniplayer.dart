@@ -48,44 +48,52 @@ class MiniPlayer extends StatelessWidget {
       final isSleepActive =
           sleepRemaining != null && sleepRemaining > Duration.zero;
 
-      return GestureDetector(
-        onTap: onTap,
-        onVerticalDragEnd: (details) {
-          if (details.primaryVelocity != null &&
-              details.primaryVelocity! < -250) {
-            if (onSwipeUp != null) {
-              onSwipeUp!();
-            } else {
-              onTap();
-            }
-          }
-        },
-        child: Container(
-          margin: const EdgeInsets.fromLTRB(10, 4, 10, 6),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: isDark ? 0.45 : 0.12),
-                blurRadius: 16,
-                offset: const Offset(0, 6),
-              ),
-            ],
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(16),
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
+      return Container(
+        margin: const EdgeInsets.symmetric(horizontal: 20),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(28),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+            child: GestureDetector(
+              onTap: onTap,
+              onVerticalDragEnd: (details) {
+                if (details.primaryVelocity != null &&
+                    details.primaryVelocity! < -250) {
+                  if (onSwipeUp != null) {
+                    onSwipeUp!();
+                  } else {
+                    onTap();
+                  }
+                }
+              },
               child: Container(
-                color: isDark
-                    ? const Color(0xFF1C1C1E).withValues(alpha: 0.85)
-                    : Colors.white.withValues(alpha: 0.85),
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? Colors.black.withValues(alpha:0.55)
+                      : Colors.white.withValues(alpha:0.75),
+                  borderRadius: BorderRadius.circular(28),
+                  border: Border.all(
+                    color: isDark
+                        ? Colors.white.withValues(alpha:0.12)
+                        : Colors.black.withValues(alpha:0.08),
+                    width: 0.5,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha:0.08),
+                      blurRadius: 15,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+                ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Padding(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 8),
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
                       child: Row(
                         children: [
                           Hero(
@@ -93,22 +101,23 @@ class MiniPlayer extends StatelessWidget {
                             child: ArtworkWidget(
                               songId: currentSong.id,
                               artworkUrl: currentSong.artwork,
-                              size: 46,
-                              borderRadius: 10,
+                              size: 40,
+                              borderRadius: 12,
                             ),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
                               children: [
                                 Text(
                                   currentSong.title,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 13,
                                     color: isDark ? Colors.white : Colors.black,
                                   ),
                                 ),
@@ -118,7 +127,7 @@ class MiniPlayer extends StatelessWidget {
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
-                                    fontSize: 12,
+                                    fontSize: 11,
                                     color: isDark
                                         ? Colors.white60
                                         : Colors.black54,
@@ -128,49 +137,49 @@ class MiniPlayer extends StatelessWidget {
                             ),
                           ),
 
-                          // ── Speed indicator (only when ≠ 1.0x) ──
+                          // Speed Indicator Chip
                           if (isCustomSpeed) ...[
                             Container(
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 6, vertical: 3),
+                                  horizontal: 6, vertical: 2),
                               decoration: BoxDecoration(
-                                color: primaryColor.withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(8),
+                                color: primaryColor.withValues(alpha:0.15),
+                                borderRadius: BorderRadius.circular(12),
                               ),
                               child: Text(
                                 '${speed}x',
                                 style: TextStyle(
-                                  fontSize: 11,
+                                  fontSize: 10.5,
                                   fontWeight: FontWeight.w600,
                                   color: primaryColor,
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 6),
+                            const SizedBox(width: 4),
                           ],
 
-                          // ── Sleep timer countdown (only when active) ──
+                          // Sleep Timer Chip
                           if (isSleepActive) ...[
                             Container(
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 6, vertical: 3),
+                                  horizontal: 6, vertical: 2),
                               decoration: BoxDecoration(
-                                color: primaryColor.withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(8),
+                                color: primaryColor.withValues(alpha:0.15),
+                                borderRadius: BorderRadius.circular(12),
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Icon(
                                     CupertinoIcons.timer,
-                                    size: 12,
+                                    size: 11,
                                     color: primaryColor,
                                   ),
                                   const SizedBox(width: 3),
                                   Text(
                                     _formatCountdown(sleepRemaining),
                                     style: TextStyle(
-                                      fontSize: 11,
+                                      fontSize: 10.5,
                                       fontWeight: FontWeight.w600,
                                       color: primaryColor,
                                       fontFeatures: const [
@@ -181,15 +190,17 @@ class MiniPlayer extends StatelessWidget {
                                 ],
                               ),
                             ),
-                            const SizedBox(width: 6),
+                            const SizedBox(width: 4),
                           ],
 
+                          // Play / Pause Action
                           IconButton(
+                            visualDensity: VisualDensity.compact,
                             icon: Icon(
                               audioController.playing.value
                                   ? CupertinoIcons.pause_fill
                                   : CupertinoIcons.play_fill,
-                              size: 26,
+                              size: 22,
                               color: isDark ? Colors.white : Colors.black,
                             ),
                             onPressed: () {
@@ -200,10 +211,13 @@ class MiniPlayer extends StatelessWidget {
                               }
                             },
                           ),
+
+                          // Next Action
                           IconButton(
+                            visualDensity: VisualDensity.compact,
                             icon: Icon(
                               CupertinoIcons.forward_fill,
-                              size: 24,
+                              size: 20,
                               color: isDark ? Colors.white : Colors.black,
                             ),
                             onPressed: () => audioController.next(),
@@ -211,13 +225,17 @@ class MiniPlayer extends StatelessWidget {
                         ],
                       ),
                     ),
+
+                    // Seamless Bottom Progress Bar
                     ClipRRect(
                       borderRadius: const BorderRadius.vertical(
-                          bottom: Radius.circular(16)),
+                        bottom: Radius.circular(28),
+                      ),
                       child: LinearProgressIndicator(
                         value: progress,
                         minHeight: 2.5,
                         backgroundColor: Colors.transparent,
+                        color: primaryColor,
                       ),
                     ),
                   ],

@@ -111,7 +111,7 @@ class SongTile extends StatelessWidget {
                                 margin: const EdgeInsets.only(right: 6),
                                 padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
                                 decoration: BoxDecoration(
-                                  color: primaryColor.withOpacity(0.15),
+                                  color: primaryColor.withValues(alpha:0.15),
                                   borderRadius: BorderRadius.circular(4),
                                 ),
                                 child: Text(
@@ -181,7 +181,7 @@ class SongTile extends StatelessWidget {
       context: context,
       barrierDismissible: true,
       barrierLabel: 'Dismiss',
-      barrierColor: Colors.black.withOpacity(0.4),
+      barrierColor: Colors.black.withValues(alpha:0.4),
       transitionDuration: const Duration(milliseconds: 250),
       pageBuilder: (context, animation, secondaryAnimation) => const SizedBox.shrink(),
       transitionBuilder: (context, animation, secondaryAnimation, child) {
@@ -204,11 +204,11 @@ class SongTile extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
                     decoration: BoxDecoration(
                       color: isDark
-                          ? const Color(0xFF252525).withOpacity(0.85)
-                          : Colors.white.withOpacity(0.85),
+                          ? const Color(0xFF252525).withValues(alpha:0.85)
+                          : Colors.white.withValues(alpha:0.85),
                       borderRadius: BorderRadius.circular(22),
                       border: Border.all(
-                        color: isDark ? Colors.white10 : Colors.black.withOpacity(0.05),
+                        color: isDark ? Colors.white10 : Colors.black.withValues(alpha:0.05),
                       ),
                     ),
                     child: Column(
@@ -392,7 +392,7 @@ class SongTile extends StatelessWidget {
       context: context,
       barrierDismissible: true,
       barrierLabel: 'Dismiss',
-      barrierColor: Colors.black.withOpacity(0.4),
+      barrierColor: Colors.black.withValues(alpha:0.4),
       transitionDuration: const Duration(milliseconds: 250),
       pageBuilder: (context, animation, secondaryAnimation) => const SizedBox.shrink(),
       transitionBuilder: (context, animation, secondaryAnimation, child) {
@@ -414,11 +414,11 @@ class SongTile extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
                     decoration: BoxDecoration(
                       color: isDark
-                          ? const Color(0xFF252525).withOpacity(0.85)
-                          : Colors.white.withOpacity(0.85),
+                          ? const Color(0xFF252525).withValues(alpha:0.85)
+                          : Colors.white.withValues(alpha:0.85),
                       borderRadius: BorderRadius.circular(22),
                       border: Border.all(
-                        color: isDark ? Colors.white10 : Colors.black.withOpacity(0.05),
+                        color: isDark ? Colors.white10 : Colors.black.withValues(alpha:0.05),
                       ),
                     ),
                     child: Column(

@@ -976,9 +976,14 @@ class _QueueSheetState extends State<QueueSheet> {
   final FavoritesController favoritesController =
       Get.find<FavoritesController>();
 
+  bool _isShuffle = false;
+  bool _isRepeat = false;
+  bool _isAutoplay = true;
+  bool _isHistoryMode = false;
+
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isDark = MediaQuery.of(context).platformBrightness == Brightness.dark;
 
     return Obx(() {
       final queue = audioController.queue;
@@ -991,117 +996,165 @@ class _QueueSheetState extends State<QueueSheet> {
           : queue;
 
       return DraggableScrollableSheet(
-        initialChildSize: 0.75,
-        minChildSize: 0.5,
-        maxChildSize: 0.95,
+        initialChildSize: 0.85, // <-- Set to 0.85 (75% of screen)
+        minChildSize: 0.72,
+        maxChildSize: 0.85,     // <-- Optional: Cap at 0.75 if you don't want the user to expand it further
         expand: false,
         builder: (context, scrollController) {
           return ClipRRect(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
             child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
+              filter: ImageFilter.blur(sigmaX: 50, sigmaY: 50),
               child: Container(
-                decoration: BoxDecoration(
-                  color: isDark
-                      ? const Color(0xFF1C1C1E).withValues(alpha: 0.94)
-                      : const Color(0xFFF2F2F7).withValues(alpha: 0.96),
-                  border: Border(
-                    top: BorderSide(
-                      color: isDark ? Colors.white12 : Colors.black12,
-                      width: 0.5,
-                    ),
-                  ),
-                ),
-                child: Column(
-                  children: [
-                    const SizedBox(height: 10),
-                    Center(
-                      child: Container(
-                        width: 38,
-                        height: 5,
-                        decoration: BoxDecoration(
-                          color: isDark ? Colors.white30 : Colors.black26,
-                          borderRadius: BorderRadius.circular(3),
+                color: isDark
+                    ? CupertinoColors.systemBackground.resolveFrom(context).withValues(alpha: 0.65)
+                    : CupertinoColors.systemGroupedBackground.resolveFrom(context).withValues(alpha: 0.85),
+                child: CustomScrollView(
+                  controller: scrollController,
+                  physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+                  slivers: [
+                    // --- DRAG HANDLE ---
+                    SliverToBoxAdapter(
+                      child: Center(
+                        child: Container(
+                          margin: const EdgeInsets.only(top: 10, bottom: 12),
+                          width: 38,
+                          height: 5,
+                          decoration: BoxDecoration(
+                            color: CupertinoColors.tertiaryLabel.resolveFrom(context),
+                            borderRadius: BorderRadius.circular(2.5),
+                          ),
                         ),
                       ),
                     ),
-                    const SizedBox(height: 12),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text(
-                            'Queue',
-                            style: TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          TextButton(
-                            onPressed: () => Navigator.pop(context),
-                            child: const Text(
-                              'Done',
+
+                    // --- TOP NOW PLAYING SECTION ---
+                    if (currentSong != null)
+                      SliverToBoxAdapter(
+                        child: _buildNowPlayingHeader(currentSong, context),
+                      ),
+
+                    // --- 4 PILL CONTROL BUTTONS ---
+                    SliverToBoxAdapter(
+                      child: _buildPillControlsRow(context, isDark),
+                    ),
+
+                    // --- QUEUE HEADER ---
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Queue',
                               style: TextStyle(
-                                color: Colors.redAccent,
-                                fontSize: 17,
-                                fontWeight: FontWeight.w600,
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: -0.4,
+                                color: CupertinoColors.label.resolveFrom(context),
                               ),
                             ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Divider(
-                      color: isDark ? Colors.white12 : Colors.black12,
-                      height: 1,
-                    ),
-                    if (currentSong != null)
-                      _buildNowPlayingTile(currentSong, isDark),
-                    Divider(
-                      color: isDark ? Colors.white12 : Colors.black12,
-                      height: 1,
-                    ),
-                    Expanded(
-                      child: upNext.isEmpty
-                          ? Center(
+                            CupertinoButton(
+                              padding: EdgeInsets.zero,
+                              onPressed: () {
+                                HapticFeedback.lightImpact();
+                                audioController.clearQueue();
+                              }, minimumSize: Size(0, 0),
                               child: Text(
-                                'No more songs in queue',
+                                'Clear',
                                 style: TextStyle(
-                                  color: isDark
-                                      ? Colors.white54
-                                      : Colors.black54,
-                                  fontSize: 16,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w400,
+                                  color: CupertinoColors.secondaryLabel.resolveFrom(context),
                                 ),
                               ),
-                            )
-                          : ReorderableListView.builder(
-                              buildDefaultDragHandles: false,
-                              proxyDecorator: (child, index, animation) =>
-                                  Material(
-                                elevation: 6,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    // --- QUEUE ITEMS ---
+                    SliverReorderableList(
+                      itemCount: upNext.length,
+                      onReorder: (oldIndex, newIndex) {
+                        final actualOld = currentIndex + 1 + oldIndex;
+                        final actualNew = currentIndex + 1 + newIndex;
+                        audioController.reorderQueue(actualOld, actualNew);
+                      },
+                      proxyDecorator: (child, index, animation) {
+                        return AnimatedBuilder(
+                          animation: animation,
+                          builder: (context, _) {
+                            final animValue = Curves.easeOutBack.transform(animation.value);
+                            return Transform.scale(
+                              scale: lerpDouble(1.0, 1.04, animValue)!,
+                              child: Material(
+                                color: Colors.transparent,
+                                elevation: lerpDouble(0, 10, animValue)!,
                                 borderRadius: BorderRadius.circular(12),
                                 child: child,
                               ),
-                              itemCount: upNext.length,
-                              onReorder: (oldIndex, newIndex) {
-                                final actualOld = currentIndex + 1 + oldIndex;
-                                final actualNew = currentIndex + 1 + newIndex;
-                                audioController.reorderQueue(
-                                    actualOld, actualNew);
-                              },
-                              itemBuilder: (context, index) {
-                                final song = upNext[index];
-                                return _buildQueueTile(
-                                  key: ValueKey(song.id),
-                                  song: song,
-                                  index: currentIndex + 1 + index,
-                                  isDark: isDark,
-                                );
-                              },
-                            ),
+                            );
+                          },
+                        );
+                      },
+                      itemBuilder: (context, index) {
+                        final song = upNext[index];
+                        return _buildQueueTile(
+                          key: ValueKey(song.id),
+                          song: song,
+                          index: currentIndex + 1 + index,
+                        );
+                      },
                     ),
+
+                    // --- ADD SONGS TO QUEUE BUTTON ---
+                    SliverToBoxAdapter(
+                      child: _buildAddSongsTile(context, isDark),
+                    ),
+
+                    // --- AUTOPLAY HEADER ---
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 28, 20, 12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(
+                                  CupertinoIcons.infinite,
+                                  size: 20,
+                                  color: CupertinoColors.label.resolveFrom(context),
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'AutoPlay',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: -0.3,
+                                    color: CupertinoColors.label.resolveFrom(context),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Similar music will keep playing',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: CupertinoColors.secondaryLabel.resolveFrom(context),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    const SliverPadding(padding: EdgeInsets.only(bottom: 40)),
                   ],
                 ),
               ),
@@ -1112,24 +1165,24 @@ class _QueueSheetState extends State<QueueSheet> {
     });
   }
 
-  Widget _buildNowPlayingTile(dynamic song, bool isDark) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-      color: isDark
-          ? Colors.white.withValues(alpha: 0.06)
-          : Colors.black.withValues(alpha: 0.04),
+  /// 1. TOP NOW PLAYING TILE WITH STAR & MORE BUTTONS
+  Widget _buildNowPlayingHeader(dynamic song, BuildContext context) {
+    final isFav = favoritesController.isFavorite(song.id);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
       child: Row(
         children: [
           ClipRRect(
-            borderRadius: BorderRadius.circular(6),
+            borderRadius: BorderRadius.circular(10),
             child: ArtworkWidget(
               songId: song.id,
               artworkUrl: song.artwork,
-              size: 48,
-              borderRadius: 6,
+              size: 58,
+              borderRadius: 10,
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1139,129 +1192,294 @@ class _QueueSheetState extends State<QueueSheet> {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    color: isDark ? Colors.white : Colors.black,
+                    fontSize: 17,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: -0.4,
+                    color: CupertinoColors.label.resolveFrom(context),
                   ),
                 ),
+                const SizedBox(height: 2),
                 Text(
                   song.artist,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontSize: 13,
-                    color: isDark ? Colors.white54 : Colors.black54,
+                    fontSize: 14,
+                    letterSpacing: -0.2,
+                    color: CupertinoColors.secondaryLabel.resolveFrom(context),
                   ),
                 ),
               ],
             ),
           ),
-          Icon(
-            CupertinoIcons.play_fill,
-            size: 16,
-            color: Theme.of(context).colorScheme.primary,
+
+          // Star / Favorite Button
+          _CircleIconButton(
+            icon: isFav ? CupertinoIcons.star_fill : CupertinoIcons.star,
+            onTap: () => favoritesController.toggleFavoriteSong(song),
+          ),
+          const SizedBox(width: 10),
+
+          // More Options Button
+          _CircleIconButton(
+            icon: CupertinoIcons.ellipsis,
+            onTap: () {},
           ),
         ],
       ),
     );
   }
 
+  /// 2. APPLE MUSIC 4-PILL CONTROL ROW
+  Widget _buildPillControlsRow(BuildContext context, bool isDark) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        children: [
+          Expanded(
+            child: _PillButton(
+              icon: CupertinoIcons.shuffle,
+              isActive: _isShuffle,
+              onTap: () => setState(() => _isShuffle = !_isShuffle),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: _PillButton(
+              icon: CupertinoIcons.repeat,
+              isActive: _isRepeat,
+              onTap: () => setState(() => _isRepeat = !_isRepeat),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: _PillButton(
+              icon: CupertinoIcons.infinite,
+              isActive: _isAutoplay,
+              onTap: () => setState(() => _isAutoplay = !_isAutoplay),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: _PillButton(
+              icon: CupertinoIcons.line_horizontal_3_decrease,
+              isActive: _isHistoryMode,
+              onTap: () => setState(() => _isHistoryMode = !_isHistoryMode),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 3. QUEUE ITEM LIST TILE
   Widget _buildQueueTile({
     required Key key,
     required dynamic song,
     required int index,
-    required bool isDark,
   }) {
-    return Dismissible(
+    final dragIndex = index -
+        (audioController.currentSong.value != null
+            ? audioController.queue.indexWhere((s) => s.id == audioController.currentSong.value!.id) + 1
+            : 0);
+
+    return ReorderableDelayedDragStartListener(
       key: key,
-      direction: DismissDirection.endToStart,
-      onDismissed: (_) {
-        HapticFeedback.mediumImpact();
-        audioController.removeFromQueue(index);
-      },
-      background: Container(
-        alignment: Alignment.centerRight,
-        padding: const EdgeInsets.only(right: 24),
-        color: Colors.redAccent,
-        child: const Icon(
-          CupertinoIcons.trash_fill,
-          color: Colors.white,
-          size: 24,
+      index: dragIndex,
+      child: Dismissible(
+        key: key,
+        direction: DismissDirection.endToStart,
+        onDismissed: (_) {
+          HapticFeedback.mediumImpact();
+          audioController.removeFromQueue(index);
+        },
+        background: Container(
+          alignment: Alignment.centerRight,
+          padding: const EdgeInsets.only(right: 24),
+          color: CupertinoColors.destructiveRed,
+          child: const Icon(CupertinoIcons.trash_fill, color: Colors.white, size: 22),
         ),
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () => audioController.skipToQueueItem(index),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-            child: Row(
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: ArtworkWidget(
-                    songId: song.id,
-                    artworkUrl: song.artwork,
-                    size: 52,
-                    borderRadius: 8,
-                  ),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+          color: Colors.transparent,
+          child: Row(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: ArtworkWidget(
+                  songId: song.id,
+                  artworkUrl: song.artwork,
+                  size: 48,
+                  borderRadius: 8,
                 ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        song.title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                          color: isDark ? Colors.white : Colors.black87,
-                        ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      song.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: -0.3,
+                        color: CupertinoColors.label.resolveFrom(context),
                       ),
-                      Text(
-                        song.artist,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: isDark ? Colors.white54 : Colors.black54,
-                        ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      song.artist,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 13,
+                        letterSpacing: -0.2,
+                        color: CupertinoColors.secondaryLabel.resolveFrom(context),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-                IconButton(
-                  icon: Icon(
-                    favoritesController.isFavorite(song.id)
-                        ? CupertinoIcons.heart_fill
-                        : CupertinoIcons.heart,
-                    color: favoritesController.isFavorite(song.id)
-                        ? Theme.of(context).colorScheme.primary
-                        : (isDark ? Colors.white38 : Colors.black38),
-                    size: 22,
-                  ),
-                  onPressed: () =>
-                      favoritesController.toggleFavoriteSong(song),
-                ),
-                ReorderableDragStartListener(
-                  index: index -
-                      (audioController.currentSong.value != null
-                          ? audioController.queue.indexWhere((s) =>
-                                  s.id ==
-                                  audioController.currentSong.value!.id) +
-                              1
-                          : 0),
+              ),
+              ReorderableDragStartListener(
+                index: dragIndex,
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 12, right: 4, top: 8, bottom: 8),
                   child: Icon(
                     CupertinoIcons.bars,
-                    color: isDark ? Colors.white38 : Colors.black38,
+                    color: CupertinoColors.tertiaryLabel.resolveFrom(context),
                     size: 20,
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
+        ),
+      ),
+    );
+  }
+
+  /// 4. "ADD SONGS TO QUEUE" BUTTON TILE
+  Widget _buildAddSongsTile(BuildContext context, bool isDark) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+      child: GestureDetector(
+        onTap: () {
+          HapticFeedback.lightImpact();
+          // Add songs action
+        },
+        child: Row(
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: isDark
+                    ? Colors.white.withValues(alpha:0.12)
+                    : Colors.black.withValues(alpha:0.08),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                CupertinoIcons.add,
+                size: 24,
+                color: CupertinoColors.label.resolveFrom(context),
+              ),
+            ),
+            const SizedBox(width: 14),
+            Text(
+              'Add Songs to Queue',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                letterSpacing: -0.3,
+                color: CupertinoColors.label.resolveFrom(context),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// CIRCULAR ICON BUTTON FOR NOW PLAYING ACTIONS
+class _CircleIconButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+
+  const _CircleIconButton({required this.icon, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = MediaQuery.of(context).platformBrightness == Brightness.dark;
+
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.lightImpact();
+        onTap();
+      },
+      child: Container(
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: isDark
+              ? Colors.white.withValues(alpha:0.12)
+              : Colors.black.withValues(alpha:0.06),
+        ),
+        child: Icon(
+          icon,
+          size: 18,
+          color: CupertinoColors.label.resolveFrom(context),
+        ),
+      ),
+    );
+  }
+}
+
+/// WIDE PILL CONTROL BUTTON
+class _PillButton extends StatelessWidget {
+  final IconData icon;
+  final bool isActive;
+  final VoidCallback onTap;
+
+  const _PillButton({
+    required this.icon,
+    required this.isActive,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    // Theme-driven background colors
+    final baseBg = colorScheme.onSurface.withValues(alpha: 0.08);
+    final activeBg = colorScheme.primaryContainer.withValues(alpha: 0.7);
+
+    // Theme-driven icon colors
+    final activeIconColor = colorScheme.onPrimaryContainer;
+    final inactiveIconColor = colorScheme.onSurface;
+
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.lightImpact();
+        onTap();
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        height: 40,
+        decoration: BoxDecoration(
+          color: isActive ? activeBg : baseBg,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Icon(
+          icon,
+          size: 20,
+          color: isActive ? activeIconColor : inactiveIconColor,
         ),
       ),
     );

@@ -21,12 +21,35 @@ class _LibraryScreenState extends State<LibraryScreen> {
   final themeController = Get.find<ThemeController>();
   final libraryController = Get.find<LibraryController>();
   final searchController = TextEditingController();
+  late final PageController _pageController;
   int _segmentedControlValue = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController(initialPage: _segmentedControlValue);
+  }
 
   @override
   void dispose() {
     searchController.dispose();
+    _pageController.dispose();
     super.dispose();
+  }
+
+  void _onTabChanged(int index) {
+    if (index == _segmentedControlValue) return;
+
+    setState(() {
+      _segmentedControlValue = index;
+    });
+
+    if (index == 1 || index == 2) {
+      if (libraryController.sortBy.value == 'album' ||
+          libraryController.sortBy.value == 'duration') {
+        libraryController.sortBy.value = 'title';
+      }
+    }
   }
 
   @override
@@ -82,17 +105,22 @@ class _LibraryScreenState extends State<LibraryScreen> {
 
                   const SizedBox(height: 14),
 
-                  /// APPLE MUSIC SEGMENTED CONTROL (4 TABS)
+                  /// FLOATING APPLE MUSIC SEGMENTED CONTROL
                   SizedBox(
                     width: double.infinity,
                     child: CupertinoSlidingSegmentedControl<int>(
                       groupValue: _segmentedControlValue,
+                      // Added subtle inner padding to give the thumb breathing room
+                      padding: const EdgeInsets.all(4),
                       backgroundColor:
                           isDark
-                              ? Colors.white10
+                              ? Colors.white.withValues(alpha: 0.08)
                               : Colors.black.withValues(alpha: 0.05),
+                      // Elevated floating color for dark and light modes
                       thumbColor:
-                          isDark ? const Color(0xFF636366) : Colors.white,
+                          isDark
+                              ? const Color(0xFF636366)
+                              : Colors.white,
                       children: {
                         0: _buildSegmentText('Songs', 0, theme, isDark),
                         1: _buildSegmentText('Albums', 1, theme, isDark),
@@ -101,16 +129,12 @@ class _LibraryScreenState extends State<LibraryScreen> {
                       },
                       onValueChanged: (v) {
                         if (v != null) {
-                          setState(() {
-                            _segmentedControlValue = v;
-                          });
-                          // Reset sort parameter depending on the active tab
-                          if (v == 1 || v == 2) {
-                            if (libraryController.sortBy.value == 'album' ||
-                                libraryController.sortBy.value == 'duration') {
-                              libraryController.sortBy.value = 'title';
-                            }
-                          }
+                          _onTabChanged(v);
+                          _pageController.animateToPage(
+                            v,
+                            duration: const Duration(milliseconds: 300),
+                            curve: Curves.fastOutSlowIn,
+                          );
                         }
                       },
                     ),
@@ -140,11 +164,17 @@ class _LibraryScreenState extends State<LibraryScreen> {
                               fontSize: 15,
                               color: isDark ? Colors.white : Colors.black,
                             ),
+                            textAlignVertical: TextAlignVertical.center,
                             decoration: InputDecoration(
+                              isDense: true,
                               prefixIcon: Icon(
                                 CupertinoIcons.search,
                                 size: 18,
                                 color: isDark ? Colors.white54 : Colors.black45,
+                              ),
+                              prefixIconConstraints: const BoxConstraints(
+                                minWidth: 36,
+                                minHeight: 36,
                               ),
                               hintText: 'Search in library...',
                               hintStyle: TextStyle(
@@ -153,11 +183,11 @@ class _LibraryScreenState extends State<LibraryScreen> {
                               ),
                               border: InputBorder.none,
                               contentPadding: const EdgeInsets.symmetric(
-                                vertical: 8,
+                                vertical: 0,
+                                horizontal: 0,
                               ),
                               suffixIcon: Obx(() {
-                                final query =
-                                    libraryController.searchQuery.value;
+                                final query = libraryController.searchQuery.value;
                                 if (query.isEmpty) {
                                   return const SizedBox.shrink();
                                 }
@@ -169,13 +199,14 @@ class _LibraryScreenState extends State<LibraryScreen> {
                                   child: Icon(
                                     CupertinoIcons.clear_circled_solid,
                                     size: 16,
-                                    color:
-                                        isDark
-                                            ? Colors.white54
-                                            : Colors.black45,
+                                    color: isDark ? Colors.white54 : Colors.black45,
                                   ),
                                 );
                               }),
+                              suffixIconConstraints: const BoxConstraints(
+                                minWidth: 36,
+                                minHeight: 36,
+                              ),
                             ),
                           ),
                         ),
@@ -300,8 +331,20 @@ class _LibraryScreenState extends State<LibraryScreen> {
               ),
             ),
 
-            /// TAB CONTENT
-            Expanded(child: _buildTabContent()),
+            /// SWIPEABLE TAB CONTENT
+            Expanded(
+              child: PageView(
+                controller: _pageController,
+                physics: const BouncingScrollPhysics(),
+                onPageChanged: _onTabChanged,
+                children: [
+                  SongsTab(onNavigateToPlayer: widget.onNavigateToPlayer),
+                  const AlbumsTab(),
+                  const ArtistsTab(),
+                  PlaylistsTab(onNavigateToPlayer: widget.onNavigateToPlayer),
+                ],
+              ),
+            ),
           ],
         ),
       ),
@@ -317,33 +360,24 @@ class _LibraryScreenState extends State<LibraryScreen> {
     final isSelected = _segmentedControlValue == index;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Text(
-        text,
+      // Increased vertical padding (from 8 to 10) and horizontal padding (from 0 to 12)
+      // to lift the active item pill and give it a taller, floating presence.
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+      child: AnimatedDefaultTextStyle(
+        duration: const Duration(milliseconds: 200),
         style: TextStyle(
           fontSize: 13,
-          fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+          fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
           color:
               isSelected
                   ? (isDark ? Colors.white : Colors.black)
-                  : theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.6),
+                  : theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.55),
+        ),
+        child: Text(
+          text,
+          textAlign: TextAlign.center,
         ),
       ),
     );
-  }
-
-  Widget _buildTabContent() {
-    switch (_segmentedControlValue) {
-      case 0:
-        return SongsTab(onNavigateToPlayer: widget.onNavigateToPlayer);
-      case 1:
-        return const AlbumsTab();
-      case 2:
-        return const ArtistsTab();
-      case 3:
-        return PlaylistsTab(onNavigateToPlayer: widget.onNavigateToPlayer);
-      default:
-        return const SizedBox.shrink();
-    }
   }
 }
