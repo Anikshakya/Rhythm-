@@ -100,7 +100,7 @@ class _FullScreenPlayerState extends State<FullScreenPlayer>
 
       return Scaffold(
         extendBodyBehindAppBar: true,
-        backgroundColor: isDark ? Colors.black : const Color(0xFFF2F2F7),
+        backgroundColor: isDark ? Colors.black : const Color(0xffffffff),
         body: Stack(
           children: [
             // Ambient Blur Backdrop
@@ -115,7 +115,7 @@ class _FullScreenPlayerState extends State<FullScreenPlayer>
                       fit: StackFit.expand,
                       children: [
                         Opacity(
-                          opacity: 0.16,
+                          opacity: isDark ? 0.16 : 0.40,
                           child: Transform.scale(
                             scale: 1.5,
                             child: ArtworkWidget(
@@ -129,7 +129,7 @@ class _FullScreenPlayerState extends State<FullScreenPlayer>
                           filter: ImageFilter.blur(sigmaX: 60, sigmaY: 60),
                           child: Container(
                             decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.06),
+                              color: isDark ? Colors.black.withValues(alpha: 0.06) : const Color.fromARGB(255, 235, 234, 234).withValues(alpha: 0.6),
                             ),
                           ),
                         ),

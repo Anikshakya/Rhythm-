@@ -89,15 +89,16 @@ class _MainNavigationState extends State<MainNavigation> {
           Positioned(
             left: 0,
             right: 0,
-            bottom:
-                Platform.isIOS
+            bottom: (!Platform.isIOS && MediaQuery.of(context).viewInsets.bottom > 0)
+                ? 10.0
+                : Platform.isIOS
                     ? (bottomPadding > 0 ? bottomPadding * 2 + 4 : 6 * 2)
                     : (bottomPadding > 0 ? bottomPadding * 2 : 58 + 10),
             child: MiniPlayer(
               onTap: _navigateToPlayer,
               onSwipeUp: _navigateToPlayer,
             ),
-          ),
+          )
         ],
       ),
       bottomNavigationBar: CustomFloatingNavBar(

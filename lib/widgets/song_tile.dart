@@ -70,8 +70,9 @@ class SongTile extends StatelessWidget {
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  /// ARTWORK + BOTTOM-RIGHT EQUALIZER BADGE
+                  /// 1. ARTWORK + EQUALIZER BADGE
                   SizedBox(
                     width: 52,
                     height: 52,
@@ -84,34 +85,26 @@ class SongTile extends StatelessWidget {
                           borderRadius: 10,
                         ),
                         if (isPlayingCurrent)
-                          Positioned(
-                            bottom: 0,
-                            right: 0,
-                            child: Container(
-                              width: 22,
-                              height: 22,
-                              decoration: BoxDecoration(
-                                color: Colors.black.withOpacity(0.75),
-                                borderRadius: const BorderRadius.only(
-                                  topLeft: Radius.circular(6),
-                                  bottomRight: Radius.circular(10),
-                                ),
-                              ),
-                              alignment: Alignment.center,
-                              child: _AnimatedEqualizerBars(
-                                color: primaryColor,
-                              ),
+                          Container(
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.5),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            alignment: Alignment.center,
+                            child: _AnimatedEqualizerBars(
+                              color: primaryColor,
                             ),
                           ),
                       ],
                     ),
                   ),
-                  const SizedBox(width: 14),
+                  const SizedBox(width: 12),
 
-                  /// TITLE & ARTIST
+                  /// 2. TITLE & ARTIST / ALBUM (EXPANDED TO PREVENT OVERFLOW)
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
                           song.title,
@@ -170,7 +163,10 @@ class SongTile extends StatelessWidget {
                     ),
                   ),
 
-                  /// DURATION & OVERFLOW BUTTON
+                  /// ADDED SPACING BETWEEN TEXT AND ACTION AREA
+                  const SizedBox(width: 12),
+
+                  /// 3. FAVORITE ICON, DURATION & OVERFLOW BUTTON
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -180,7 +176,7 @@ class SongTile extends StatelessWidget {
                           child: Icon(
                             CupertinoIcons.heart_fill,
                             color: primaryColor,
-                            size: 16,
+                            size: 15,
                           ),
                         ),
                       Text(
@@ -190,13 +186,17 @@ class SongTile extends StatelessWidget {
                           color: isDark ? Colors.white38 : Colors.black38,
                         ),
                       ),
-                      const SizedBox(width: 4),
+                      const SizedBox(width: 2),
+
+                      /// ZERO-PADDING BUTTON TO SAVE HORIZONTAL SPACE
                       Builder(
                         builder: (btnContext) {
                           return IconButton(
+                            padding: const EdgeInsets.all(6),
+                            constraints: const BoxConstraints(),
                             icon: Icon(
                               CupertinoIcons.ellipsis,
-                              size: 20,
+                              size: 18,
                               color: isDark ? Colors.white54 : Colors.black45,
                             ),
                             onPressed: () {
@@ -244,7 +244,6 @@ class SongTile extends StatelessWidget {
       isCentered: false,
       width: 250,
       children: [
-        /// SONG HEADER INFO
         Padding(
           padding: const EdgeInsets.all(16),
           child: Row(
@@ -286,13 +285,11 @@ class SongTile extends StatelessWidget {
             ],
           ),
         ),
-
         Divider(
           height: 0.5,
           thickness: 0.5,
           color: isDark ? Colors.white12 : Colors.black12,
         ),
-
         ...IosPopoverMenu.buildActionList(
           isDark: isDark,
           isFirstGroup: false,
@@ -394,13 +391,11 @@ class SongTile extends StatelessWidget {
             ],
           ),
         ),
-
         Divider(
           height: 0.5,
           thickness: 0.5,
           color: isDark ? Colors.white12 : Colors.black12,
         ),
-
         if (controller.playlists.isEmpty)
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 20),
@@ -460,7 +455,6 @@ class SongTile extends StatelessWidget {
   }
 }
 
-/// Dynamic 3-Bar Equalizer Animation Widget
 class _AnimatedEqualizerBars extends StatefulWidget {
   final Color color;
 
@@ -498,11 +492,13 @@ class _AnimatedEqualizerBarsState extends State<_AnimatedEqualizerBars>
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            _buildBar(0.4 + (_controller.value * 0.6), 10),
+            _buildBar(0.7 - (_controller.value * 0.6), 10),
             const SizedBox(width: 1.5),
-            _buildBar(1.0 - (_controller.value * 0.7), 12),
+            _buildBar(0.8 - (_controller.value * 0.3), 12),
             const SizedBox(width: 1.5),
-            _buildBar(0.3 + (_controller.value * 0.5), 10),
+            _buildBar(0.5 + (_controller.value * 0.5), 10),
+            const SizedBox(width: 1.5),
+            _buildBar(0.2 + (_controller.value * 0.6), 10),
           ],
         );
       },
