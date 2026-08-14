@@ -39,7 +39,7 @@ class RhythmApp extends StatelessWidget {
 
     return Obx(
       () => GetMaterialApp(
-        title: 'Rhythm',
+        title: 'Melo',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,
         darkTheme: AppTheme.darkTheme,

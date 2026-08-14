@@ -169,7 +169,7 @@ class _FullScreenPlayerState extends State<FullScreenPlayer>
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            currentSong?.album ?? 'Rhythm',
+                            currentSong?.album ?? 'Melo',
                             style: TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w600,

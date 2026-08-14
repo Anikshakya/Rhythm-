@@ -19,7 +19,7 @@ Future<void> initAudioService() async {
     audioHandler = await AudioService.init(
       builder: () => RhythmAudioHandler(),
       config: const AudioServiceConfig(
-        androidNotificationChannelId: 'aniklinkin.np.dhun.channel.audio',
+        androidNotificationChannelId: 'aniklinkin.np.melo.channel.audio',
         androidNotificationChannelName: 'Rhythm Player',
         androidNotificationOngoing: true,
         androidShowNotificationBadge: true,
