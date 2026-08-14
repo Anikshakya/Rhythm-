@@ -1,5 +1,6 @@
 import 'dart:ui';
 
+import 'package:Melo/widgets/marquee_text.dart';
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -287,22 +288,19 @@ class _FullScreenPlayerState extends State<FullScreenPlayer>
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
-                                  currentSong.title,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
+                                MarqueeText(
+                                  text: currentSong.title,
                                   style: TextStyle(
                                     fontSize: 22,
                                     fontWeight: FontWeight.bold,
                                     letterSpacing: -0.5,
                                     color: isDark ? Colors.white : Colors.black,
                                   ),
+                                  height: 28,
                                 ),
                                 const SizedBox(height: 2),
-                                Text(
-                                  currentSong.artist,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
+                                MarqueeText(
+                                  text: currentSong.artist,
                                   style: TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.w500,
@@ -311,6 +309,7 @@ class _FullScreenPlayerState extends State<FullScreenPlayer>
                                             ? Colors.white60
                                             : Colors.black54,
                                   ),
+                                  height: 22,
                                 ),
                               ],
                             ),

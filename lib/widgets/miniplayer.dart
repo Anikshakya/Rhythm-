@@ -1,4 +1,5 @@
 import 'dart:ui';
+import 'package:Melo/widgets/marquee_text.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -112,10 +113,13 @@ class MiniPlayer extends StatelessWidget {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Text(
-                                  currentSong.title,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
+                                MarqueeText(
+                                  text: currentSong.title,
+                                  height: 20,
+                                  velocity: 28,
+                                  blankSpace: 50,
+                                  fadeWidth: 16,
+                                  pauseDuration: const Duration(milliseconds: 1400),
                                   style: TextStyle(
                                     fontWeight: FontWeight.w600,
                                     fontSize: 13,
