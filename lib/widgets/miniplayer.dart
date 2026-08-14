@@ -1,5 +1,5 @@
 import 'dart:ui';
-import 'package:Melo/widgets/marquee_text.dart';
+import 'package:melo/widgets/marquee_text.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';

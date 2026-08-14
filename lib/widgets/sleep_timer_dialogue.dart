@@ -1,6 +1,6 @@
 import 'dart:ui';
-import 'package:Melo/controllers/audio_controller.dart';
-import 'package:Melo/widgets/ios_pop_over.dart';
+import 'package:melo/controllers/audio_controller.dart';
+import 'package:melo/widgets/ios_pop_over.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';

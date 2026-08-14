@@ -1,5 +1,5 @@
-import 'package:Melo/widgets/audio_speed_dialogue.dart';
-import 'package:Melo/widgets/sleep_timer_dialogue.dart';
+import 'package:melo/widgets/audio_speed_dialogue.dart';
+import 'package:melo/widgets/sleep_timer_dialogue.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';

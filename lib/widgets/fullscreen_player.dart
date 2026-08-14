@@ -1,9 +1,9 @@
 import 'dart:ui';
 
-import 'package:Melo/widgets/audio_speed_dialogue.dart';
-import 'package:Melo/widgets/ios_pop_over.dart';
-import 'package:Melo/widgets/marquee_text.dart';
-import 'package:Melo/widgets/sleep_timer_dialogue.dart';
+import 'package:melo/widgets/audio_speed_dialogue.dart';
+import 'package:melo/widgets/ios_pop_over.dart';
+import 'package:melo/widgets/marquee_text.dart';
+import 'package:melo/widgets/sleep_timer_dialogue.dart';
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
