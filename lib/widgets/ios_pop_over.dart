@@ -1,6 +1,34 @@
+import 'package:flutter/material.dart';
 import 'dart:ui';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart';
+
+/// SHOW POPOVER MENU WITH BOUNCY iOS SPRING ANIMATIONS
+void showIosPopoverMenu({
+  required BuildContext context,
+  required List<Widget> children,
+  Offset? position,
+  bool isCentered = false,
+  bool isDestructive = false,
+  double width = 250,
+}) {
+  showGeneralDialog(
+    context: context,
+    barrierDismissible: true,
+    barrierLabel: 'Dismiss Popover',
+    barrierColor: Colors.transparent,
+    transitionDuration: const Duration(milliseconds: 280),
+    pageBuilder: (dialogContext, animation, secondaryAnimation) {
+      return IosAnimatedPopoverOverlay(
+        position: position,
+        isCentered: isCentered,
+        isDestructive: isDestructive,
+        width: width,
+        animation: animation,
+        children: children,
+      );
+    },
+  );
+}
 
 class IosPopoverAction extends StatelessWidget {
   final String title;
@@ -286,7 +314,7 @@ class _PopoverPositionDelegate extends SingleChildLayoutDelegate {
   }
 }
 
-class _IosAnimatedPopoverOverlay extends StatelessWidget {
+class IosAnimatedPopoverOverlay extends StatelessWidget {
   final List<Widget> children;
   final Offset? position;
   final bool isCentered;
@@ -294,7 +322,7 @@ class _IosAnimatedPopoverOverlay extends StatelessWidget {
   final double width;
   final Animation<double> animation;
 
-  const _IosAnimatedPopoverOverlay({
+  const IosAnimatedPopoverOverlay({super.key, 
     required this.children,
     this.position,
     required this.isCentered,
@@ -387,32 +415,4 @@ class _IosAnimatedPopoverOverlay extends StatelessWidget {
       },
     );
   }
-}
-
-/// SHOW POPOVER MENU WITH BOUNCY iOS SPRING ANIMATIONS
-void showIosPopoverMenu({
-  required BuildContext context,
-  required List<Widget> children,
-  Offset? position,
-  bool isCentered = false,
-  bool isDestructive = false,
-  double width = 250,
-}) {
-  showGeneralDialog(
-    context: context,
-    barrierDismissible: true,
-    barrierLabel: 'Dismiss Popover',
-    barrierColor: Colors.transparent,
-    transitionDuration: const Duration(milliseconds: 280),
-    pageBuilder: (dialogContext, animation, secondaryAnimation) {
-      return _IosAnimatedPopoverOverlay(
-        position: position,
-        isCentered: isCentered,
-        isDestructive: isDestructive,
-        width: width,
-        animation: animation,
-        children: children,
-      );
-    },
-  );
 }

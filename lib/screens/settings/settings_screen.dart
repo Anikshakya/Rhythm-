@@ -1,10 +1,12 @@
+import 'package:Melo/widgets/audio_speed_dialogue.dart';
+import 'package:Melo/widgets/ios_pop_over.dart';
+import 'package:Melo/widgets/sleep_timer_dialogue.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../controllers/audio_controller.dart';
 import '../../controllers/library_controller.dart';
 import '../../controllers/theme_controller.dart';
-import '../../widgets/ios_popover_menu.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -128,7 +130,11 @@ class SettingsScreen extends StatelessWidget {
                 primaryColor: primaryColor,
                 isDark: isDark,
                 onOpenPopover: (context) {
-                  _showSpeedPopover(context, audioController, isDark);
+                  showIosSpeedDialog(
+                    context,
+                    audioController,
+                    primaryColor,
+                  );
                 },
                 buildIcon: _buildIosIcon,
               ),
@@ -139,7 +145,11 @@ class SettingsScreen extends StatelessWidget {
                 primaryColor: primaryColor,
                 isDark: isDark,
                 onOpenPopover: (context) {
-                  _showSleepTimerPopover(context, audioController, isDark);
+                  showIosSleepTimerDialog(
+                    context,
+                    audioController,
+                    primaryColor,
+                  );
                 },
                 buildIcon: _buildIosIcon,
               ),
@@ -237,87 +247,6 @@ class SettingsScreen extends StatelessWidget {
                   }),
                   onTap: () {
                     controller.setSpeed(s);
-                  },
-                );
-              }).toList(),
-        ),
-      ],
-    );
-  }
-
-  /// Sleep Timer Popover Builder
-  void _showSleepTimerPopover(
-    BuildContext context,
-    AudioController controller,
-    bool isDark,
-  ) {
-    final options = [
-      {'label': 'Off', 'duration': null},
-      {'label': '15 Minutes', 'duration': const Duration(minutes: 15)},
-      {'label': '30 Minutes', 'duration': const Duration(minutes: 30)},
-      {'label': '60 Minutes', 'duration': const Duration(minutes: 60)},
-    ];
-    final primaryColor = Theme.of(context).colorScheme.primary;
-
-    showIosPopoverMenu(
-      context: context,
-      isCentered: true,
-      width: 260,
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          child: Center(
-            child: Text(
-              'Sleep Timer',
-              style: TextStyle(
-                fontSize: 17,
-                fontWeight: FontWeight.bold,
-                color: isDark ? Colors.white : Colors.black,
-              ),
-            ),
-          ),
-        ),
-        Divider(
-          height: 0.5,
-          thickness: 0.5,
-          color:
-              isDark
-                  ? Colors.white.withValues(alpha: 0.15)
-                  : Colors.black.withValues(alpha: 0.1),
-        ),
-        ...IosPopoverMenu.buildActionList(
-          isDark: isDark,
-          isFirstGroup: false,
-          isLastGroup: false,
-          actions:
-              options.map((opt) {
-                final duration = opt['duration'] as Duration?;
-                final label = opt['label'] as String;
-
-                return IosPopoverAction(
-                  title: label,
-                  icon: CupertinoIcons.timer,
-                  isDestructive: duration == null,
-                  trailing: Obx(() {
-                    final currentTimer = controller.sleepTimer.value;
-                    final bool isSelected =
-                        (duration == null && currentTimer == null) ||
-                        (duration != null &&
-                            currentTimer != null &&
-                            currentTimer.inMinutes == duration.inMinutes);
-                    return isSelected
-                        ? Icon(
-                          CupertinoIcons.checkmark,
-                          size: 18,
-                          color:
-                              duration == null
-                                  ? CupertinoColors.destructiveRed
-                                  : primaryColor,
-                        )
-                        : const SizedBox.shrink();
-                  }),
-                  onTap: () {
-                    controller.setSleepTimer(duration);
                   },
                 );
               }).toList(),

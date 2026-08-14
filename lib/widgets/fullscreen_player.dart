@@ -1,6 +1,9 @@
 import 'dart:ui';
 
+import 'package:Melo/widgets/audio_speed_dialogue.dart';
+import 'package:Melo/widgets/ios_pop_over.dart';
 import 'package:Melo/widgets/marquee_text.dart';
+import 'package:Melo/widgets/sleep_timer_dialogue.dart';
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -11,7 +14,6 @@ import '../controllers/favorites_controller.dart';
 import '../controllers/library_controller.dart';
 import '../core/models/song_model.dart';
 import 'artwork_widget.dart';
-import 'ios_popover_menu.dart';
 
 class FullScreenPlayer extends StatefulWidget {
   const FullScreenPlayer({super.key});
@@ -100,7 +102,7 @@ class _FullScreenPlayerState extends State<FullScreenPlayer>
 
       return Scaffold(
         extendBodyBehindAppBar: true,
-        backgroundColor: isDark ? Colors.black : const Color(0xffffffff),
+        backgroundColor: isDark ? const Color.fromARGB(255, 16, 16, 16) : const Color(0xffffffff),
         body: Stack(
           children: [
             // Ambient Blur Backdrop
@@ -115,7 +117,7 @@ class _FullScreenPlayerState extends State<FullScreenPlayer>
                       fit: StackFit.expand,
                       children: [
                         Opacity(
-                          opacity: isDark ? 0.16 : 0.40,
+                          opacity: isDark ? 0.12 : 0.40,
                           child: Transform.scale(
                             scale: 1.5,
                             child: ArtworkWidget(
@@ -245,14 +247,14 @@ class _FullScreenPlayerState extends State<FullScreenPlayer>
                                   color:
                                       isDark
                                           ? Colors.white.withValues(
-                                            alpha: isPlaying ? 0.15 : 0.12,
+                                            alpha: 0.25,
                                           )
                                           : Colors.black.withValues(
                                             alpha: isPlaying ? 0.2 : 0.2,
                                           ),
-                                  blurRadius: 12,
-                                  spreadRadius: isPlaying ? 6 : 2,
-                                  offset: Offset(0, isPlaying ? 4 : 2),
+                                  blurRadius: 14,
+                                  spreadRadius: isPlaying ? 4 : 2,
+                                  offset: Offset(0, isPlaying ? 2 : 2),
                                 ),
                               ],
                             ),
@@ -445,7 +447,7 @@ class _FullScreenPlayerState extends State<FullScreenPlayer>
                         final isCustom = speed != 1.0;
                         return GestureDetector(
                           onTap:
-                              () => _showIosSpeedDialog(
+                              () => showIosSpeedDialog(
                                 context,
                                 audioController,
                                 primaryColor,
@@ -492,7 +494,7 @@ class _FullScreenPlayerState extends State<FullScreenPlayer>
                             remaining != null && remaining > Duration.zero;
                         return GestureDetector(
                           onTap:
-                              () => _showIosSleepTimerDialog(
+                              () => showIosSleepTimerDialog(
                                 context,
                                 audioController,
                                 primaryColor,
@@ -650,137 +652,6 @@ void _showIosOptionsDialog(
             icon: CupertinoIcons.text_insert,
             onTap: () {
               controller.playNext(song);
-            },
-          ),
-        ],
-      ),
-    ],
-  );
-}
-
-void _showIosSpeedDialog(
-  BuildContext context,
-  AudioController controller,
-  Color primaryColor,
-) {
-  HapticFeedback.mediumImpact();
-  final isDark = Theme.of(context).brightness == Brightness.dark;
-
-  showIosPopoverMenu(
-    context: context,
-    isCentered: true,
-    width: 260,
-    children: [
-      Padding(
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        child: Center(
-          child: Text(
-            'Playback Speed',
-            style: TextStyle(
-              fontSize: 17,
-              fontWeight: FontWeight.bold,
-              color: isDark ? Colors.white : Colors.black,
-            ),
-          ),
-        ),
-      ),
-      Divider(
-        height: 0.5,
-        thickness: 0.5,
-        color: isDark ? Colors.white12 : Colors.black12,
-      ),
-      ...IosPopoverMenu.buildActionList(
-        isDark: isDark,
-        isFirstGroup: false,
-        isLastGroup: false,
-        actions:
-            [0.5, 0.75, 1.0, 1.25, 1.5, 2.0].map((s) {
-              return IosPopoverAction(
-                title: '${s}x Speed',
-                icon: CupertinoIcons.speedometer,
-                trailing: Obx(() {
-                  final isSelected = controller.speed.value == s;
-                  return isSelected
-                      ? Icon(
-                        CupertinoIcons.checkmark,
-                        size: 18,
-                        color: primaryColor,
-                      )
-                      : const SizedBox.shrink();
-                }),
-                onTap: () {
-                  controller.setSpeed(s);
-                },
-              );
-            }).toList(),
-      ),
-    ],
-  );
-}
-
-void _showIosSleepTimerDialog(
-  BuildContext context,
-  AudioController controller,
-  Color primaryColor,
-) {
-  HapticFeedback.mediumImpact();
-  final isDark = Theme.of(context).brightness == Brightness.dark;
-
-  showIosPopoverMenu(
-    context: context,
-    isCentered: true,
-    width: 260,
-    children: [
-      Padding(
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        child: Center(
-          child: Text(
-            'Sleep Timer',
-            style: TextStyle(
-              fontSize: 17,
-              fontWeight: FontWeight.bold,
-              color: isDark ? Colors.white : Colors.black,
-            ),
-          ),
-        ),
-      ),
-      Divider(
-        height: 0.5,
-        thickness: 0.5,
-        color: isDark ? Colors.white12 : Colors.black12,
-      ),
-      ...IosPopoverMenu.buildActionList(
-        isDark: isDark,
-        isFirstGroup: false,
-        isLastGroup: false,
-        actions: [
-          IosPopoverAction(
-            title: 'Off',
-            icon: CupertinoIcons.clear_circled,
-            isDestructive: true,
-            onTap: () {
-              controller.setSleepTimer(null);
-            },
-          ),
-          IosPopoverAction(
-            title: '15 Minutes',
-            icon: CupertinoIcons.timer,
-            onTap: () {
-              controller.setSleepTimer(const Duration(minutes: 15));
-            },
-          ),
-          IosPopoverAction(
-            title: '30 Minutes',
-            icon: CupertinoIcons.timer,
-            onTap: () {
-              controller.setSleepTimer(const Duration(minutes: 30));
-            },
-          ),
-          IosPopoverAction(
-            title: '60 Minutes',
-            icon: CupertinoIcons.timer,
-            onTap: () {
-              controller.setSleepTimer(const Duration(minutes: 60));
             },
           ),
         ],

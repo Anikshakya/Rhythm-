@@ -154,23 +154,68 @@ class MiniPlayer extends StatelessWidget {
                                                   : Colors.black45,
                                         ),
                                       ),
-                                      Icon(
-                                        CupertinoIcons.timer,
-                                        size: 11,
-                                        color: primaryColor,
-                                      ),
+                                      
                                       const SizedBox(width: 2),
-                                      Text(
-                                        _formatCountdown(sleepRemaining),
-                                        style: TextStyle(
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w600,
-                                          color: primaryColor,
-                                          fontFeatures: const [
-                                            FontFeature.tabularFigures(),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 6,
+                                          vertical: 2,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: primaryColor.withValues(alpha: 0.15),
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            Icon(
+                                              CupertinoIcons.timer,
+                                              size: 11,
+                                              color: primaryColor,
+                                            ),
+                                            Text(
+                                              _formatCountdown(sleepRemaining),
+                                              style: TextStyle(
+                                                fontSize: 10.5,
+                                                fontWeight: FontWeight.w600,
+                                                color: primaryColor,
+                                              ),
+                                            ),
                                           ],
                                         ),
                                       ),
+                                    ],
+                                    // Speed Indicator Chip
+                                    if (isCustomSpeed) ...[
+                                      Text(
+                                        ' • ',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          color:
+                                              isDark
+                                                  ? Colors.white54
+                                                  : Colors.black45,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 2),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 6,
+                                          vertical: 2,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: primaryColor.withValues(alpha: 0.15),
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                        child: Text(
+                                          '${speed}x',
+                                          style: TextStyle(
+                                            fontSize: 10.5,
+                                            fontWeight: FontWeight.w600,
+                                            color: primaryColor,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 4),
                                     ],
                                   ],
                                 ),
@@ -178,28 +223,7 @@ class MiniPlayer extends StatelessWidget {
                             ),
                           ),
 
-                          // Speed Indicator Chip
-                          if (isCustomSpeed) ...[
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 6,
-                                vertical: 2,
-                              ),
-                              decoration: BoxDecoration(
-                                color: primaryColor.withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Text(
-                                '${speed}x',
-                                style: TextStyle(
-                                  fontSize: 10.5,
-                                  fontWeight: FontWeight.w600,
-                                  color: primaryColor,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 4),
-                          ],
+                          
 
                           // Play / Pause Action
                           IconButton(
