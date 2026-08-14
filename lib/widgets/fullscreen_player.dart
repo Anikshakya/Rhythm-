@@ -644,7 +644,6 @@ void _showIosOptionsDialog(
             iconColor: isFav ? primaryColor : null,
             onTap: () {
               favs.toggleFavoriteSong(song);
-              Navigator.pop(context);
             },
           ),
           IosPopoverAction(
@@ -652,7 +651,6 @@ void _showIosOptionsDialog(
             icon: CupertinoIcons.text_insert,
             onTap: () {
               controller.playNext(song);
-              Navigator.pop(context);
             },
           ),
         ],
@@ -713,7 +711,6 @@ void _showIosSpeedDialog(
                 }),
                 onTap: () {
                   controller.setSpeed(s);
-                  Navigator.pop(context);
                 },
               );
             }).toList(),
@@ -764,7 +761,6 @@ void _showIosSleepTimerDialog(
             isDestructive: true,
             onTap: () {
               controller.setSleepTimer(null);
-              Navigator.pop(context);
             },
           ),
           IosPopoverAction(
@@ -772,7 +768,6 @@ void _showIosSleepTimerDialog(
             icon: CupertinoIcons.timer,
             onTap: () {
               controller.setSleepTimer(const Duration(minutes: 15));
-              Navigator.pop(context);
             },
           ),
           IosPopoverAction(
@@ -780,7 +775,6 @@ void _showIosSleepTimerDialog(
             icon: CupertinoIcons.timer,
             onTap: () {
               controller.setSleepTimer(const Duration(minutes: 30));
-              Navigator.pop(context);
             },
           ),
           IosPopoverAction(
@@ -788,7 +782,6 @@ void _showIosSleepTimerDialog(
             icon: CupertinoIcons.timer,
             onTap: () {
               controller.setSleepTimer(const Duration(minutes: 60));
-              Navigator.pop(context);
             },
           ),
         ],

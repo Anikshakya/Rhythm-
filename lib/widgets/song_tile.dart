@@ -36,7 +36,7 @@ class SongTile extends StatelessWidget {
     final playlistController = Get.find<PlaylistController>();
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final primaryColor = theme.colorScheme.primary; // Theme-aware accent color
+    final primaryColor = theme.colorScheme.primary;
 
     return CustomScrollAnimation(
       index: index,
@@ -71,32 +71,40 @@ class SongTile extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: Row(
                 children: [
-                  /// ARTWORK + PLAYING INDICATOR
-                  Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      ArtworkWidget(
-                        songId: song.id,
-                        artworkUrl: song.artwork,
-                        size: 52,
-                        borderRadius: 10,
-                      ),
-                      if (isPlayingCurrent)
-                        AnimatedContainer(
-                          duration: const Duration(milliseconds: 300),
-                          width: 52,
-                          height: 52,
-                          decoration: BoxDecoration(
-                            color: Colors.black45,
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Icon(
-                            CupertinoIcons.speaker_2_fill,
-                            color: primaryColor,
-                            size: 24,
-                          ),
+                  /// ARTWORK + BOTTOM-RIGHT EQUALIZER BADGE
+                  SizedBox(
+                    width: 52,
+                    height: 52,
+                    child: Stack(
+                      children: [
+                        ArtworkWidget(
+                          songId: song.id,
+                          artworkUrl: song.artwork,
+                          size: 52,
+                          borderRadius: 10,
                         ),
-                    ],
+                        if (isPlayingCurrent)
+                          Positioned(
+                            bottom: 0,
+                            right: 0,
+                            child: Container(
+                              width: 22,
+                              height: 22,
+                              decoration: BoxDecoration(
+                                color: Colors.black.withOpacity(0.75),
+                                borderRadius: const BorderRadius.only(
+                                  topLeft: Radius.circular(6),
+                                  bottomRight: Radius.circular(10),
+                                ),
+                              ),
+                              alignment: Alignment.center,
+                              child: _AnimatedEqualizerBars(
+                                color: primaryColor,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
                   const SizedBox(width: 14),
 
@@ -296,7 +304,6 @@ class SongTile extends StatelessWidget {
               iconColor: isFav ? primaryColor : null,
               onTap: () {
                 favoritesController.toggleFavoriteSong(song);
-                Navigator.pop(context);
                 Get.snackbar(
                   'Favorites',
                   isFav ? 'Removed from favorites' : 'Added to favorites',
@@ -310,7 +317,6 @@ class SongTile extends StatelessWidget {
               icon: CupertinoIcons.text_insert,
               onTap: () {
                 audioController.playNext(song);
-                Navigator.pop(context);
                 Get.snackbar(
                   'Queue',
                   'Playing next: ${song.title}',
@@ -323,7 +329,6 @@ class SongTile extends StatelessWidget {
               icon: CupertinoIcons.list_bullet_indent,
               onTap: () {
                 audioController.addToQueue(song);
-                Navigator.pop(context);
                 Get.snackbar(
                   'Queue',
                   'Added to queue: ${song.title}',
@@ -335,7 +340,6 @@ class SongTile extends StatelessWidget {
               title: 'Add to Playlist',
               icon: CupertinoIcons.music_albums,
               onTap: () {
-                Navigator.pop(context);
                 _showIosPlaylistPicker(
                   context,
                   position,
@@ -452,6 +456,67 @@ class SongTile extends StatelessWidget {
             ),
           ),
       ],
+    );
+  }
+}
+
+/// Dynamic 3-Bar Equalizer Animation Widget
+class _AnimatedEqualizerBars extends StatefulWidget {
+  final Color color;
+
+  const _AnimatedEqualizerBars({required this.color});
+
+  @override
+  State<_AnimatedEqualizerBars> createState() => _AnimatedEqualizerBarsState();
+}
+
+class _AnimatedEqualizerBarsState extends State<_AnimatedEqualizerBars>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            _buildBar(0.4 + (_controller.value * 0.6), 10),
+            const SizedBox(width: 1.5),
+            _buildBar(1.0 - (_controller.value * 0.7), 12),
+            const SizedBox(width: 1.5),
+            _buildBar(0.3 + (_controller.value * 0.5), 10),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildBar(double heightFactor, double maxHeight) {
+    return Container(
+      width: 2,
+      height: maxHeight * heightFactor.clamp(0.2, 1.0),
+      decoration: BoxDecoration(
+        color: widget.color,
+        borderRadius: BorderRadius.circular(1),
+      ),
     );
   }
 }

@@ -83,7 +83,7 @@ class SettingsScreen extends StatelessWidget {
                   ),
                   trailing: CupertinoSwitch(
                     value: isDarkMode,
-                    activeColor: primaryColor,
+                    activeTrackColor: primaryColor,
                     onChanged: (val) => themeController.toggleTheme(),
                   ),
                 );
@@ -237,7 +237,6 @@ class SettingsScreen extends StatelessWidget {
                   }),
                   onTap: () {
                     controller.setSpeed(s);
-                    Navigator.pop(context);
                   },
                 );
               }).toList(),
@@ -319,7 +318,6 @@ class SettingsScreen extends StatelessWidget {
                   }),
                   onTap: () {
                     controller.setSleepTimer(duration);
-                    Navigator.pop(context);
                   },
                 );
               }).toList(),
