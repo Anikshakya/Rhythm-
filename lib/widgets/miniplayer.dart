@@ -123,17 +123,52 @@ class MiniPlayer extends StatelessWidget {
                                   ),
                                 ),
                                 const SizedBox(height: 2),
-                                Text(
-                                  currentSong.artist,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color:
-                                        isDark
-                                            ? Colors.white60
-                                            : Colors.black54,
-                                  ),
+                                Row(
+                                  children: [
+                                    Flexible(
+                                      child: Text(
+                                        currentSong.artist,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          color:
+                                              isDark
+                                                  ? Colors.white60
+                                                  : Colors.black54,
+                                        ),
+                                      ),
+                                    ),
+                                    if (isSleepActive) ...[
+                                      Text(
+                                        ' • ',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          color:
+                                              isDark
+                                                  ? Colors.white54
+                                                  : Colors.black45,
+                                        ),
+                                      ),
+                                      Icon(
+                                        CupertinoIcons.timer,
+                                        size: 11,
+                                        color: primaryColor,
+                                      ),
+                                      const SizedBox(width: 2),
+                                      Text(
+                                        _formatCountdown(sleepRemaining),
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w600,
+                                          color: primaryColor,
+                                          fontFeatures: const [
+                                            FontFeature.tabularFigures(),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ],
                                 ),
                               ],
                             ),
@@ -157,43 +192,6 @@ class MiniPlayer extends StatelessWidget {
                                   fontWeight: FontWeight.w600,
                                   color: primaryColor,
                                 ),
-                              ),
-                            ),
-                            const SizedBox(width: 4),
-                          ],
-
-                          // Sleep Timer Chip
-                          if (isSleepActive) ...[
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 6,
-                                vertical: 2,
-                              ),
-                              decoration: BoxDecoration(
-                                color: primaryColor.withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    CupertinoIcons.timer,
-                                    size: 11,
-                                    color: primaryColor,
-                                  ),
-                                  const SizedBox(width: 3),
-                                  Text(
-                                    _formatCountdown(sleepRemaining),
-                                    style: TextStyle(
-                                      fontSize: 10.5,
-                                      fontWeight: FontWeight.w600,
-                                      color: primaryColor,
-                                      fontFeatures: const [
-                                        FontFeature.tabularFigures(),
-                                      ],
-                                    ),
-                                  ),
-                                ],
                               ),
                             ),
                             const SizedBox(width: 4),
