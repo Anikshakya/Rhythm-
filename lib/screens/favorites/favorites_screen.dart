@@ -97,7 +97,7 @@ class FavoritesScreen extends StatelessWidget {
                     Text(
                       'Tap the heart icon on any song to add it here.',
                       style: TextStyle(
-                        color: colorScheme.onSurface.withOpacity(0.6),
+                        color: colorScheme.onSurface.withValues(alpha: 0.6),
                       ),
                     ),
                   ],

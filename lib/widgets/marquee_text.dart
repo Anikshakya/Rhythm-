@@ -48,7 +48,6 @@ class _MarqueeTextState extends State<MarqueeText>
 
   double _offset = 0;
 
-  Duration _elapsed = Duration.zero;
   Duration? _startTime;
 
   bool _needsScroll = false;
@@ -103,7 +102,6 @@ class _MarqueeTextState extends State<MarqueeText>
   void _stopTicker() {
     _ticker.stop();
     _startTime = null;
-    _elapsed = Duration.zero;
     _offset = 0;
   }
 

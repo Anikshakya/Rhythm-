@@ -93,7 +93,7 @@ void _showCustomTimerPicker(
 
   showCupertinoModalPopup<void>(
     context: context,
-    barrierColor: Colors.black.withOpacity(0.4),
+    barrierColor: Colors.black.withValues(alpha: 0.4),
     builder: (BuildContext context) {
       final isDark = Theme.of(context).brightness == Brightness.dark;
 
