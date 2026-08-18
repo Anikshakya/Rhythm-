@@ -381,14 +381,32 @@ class _FullScreenPlayerState extends State<FullScreenPlayer>
                         size: 34,
                         color: isDark ? Colors.white : Colors.black,
                       ),
-                      onPressed: () => audioController.previous(),
+                      onPressed: () async {
+                        try {
+                          debugPrint('UI: Previous button tapped');
+                          await audioController.previous();
+                        } catch (e) {
+                          debugPrint('UI: Previous error: $e');
+                        }
+                      },
                     ),
                     GestureDetector(
-                      onTap: () {
+                      onTap: () async {
                         HapticFeedback.mediumImpact();
-                        audioController.playing.value
-                            ? audioController.pause()
-                            : audioController.play();
+                        try {
+                          if (audioController.playing.value) {
+                            debugPrint('UI: Pause button tapped');
+                            await audioController.pause();
+                          } else {
+                            debugPrint('UI: Play button tapped');
+                            await audioController.play();
+                          }
+                        } catch (e) {
+                          debugPrint('UI: Playback error: $e');
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Playback error: $e')),
+                          );
+                        }
                       },
                       child: Container(
                         padding: const EdgeInsets.all(10),
@@ -407,7 +425,14 @@ class _FullScreenPlayerState extends State<FullScreenPlayer>
                         size: 34,
                         color: isDark ? Colors.white : Colors.black,
                       ),
-                      onPressed: () => audioController.next(),
+                      onPressed: () async {
+                        try {
+                          debugPrint('UI: Next button tapped');
+                          await audioController.next();
+                        } catch (e) {
+                          debugPrint('UI: Next error: $e');
+                        }
+                      },
                     ),
                     IconButton(
                       icon: Icon(

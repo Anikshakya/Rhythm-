@@ -26,6 +26,8 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+
+	<!-- Media and Audio Permissions -->
 	<key>NSAppleMusicUsageDescription</key>
 	<string>This app needs access to your media library to play local music.</string>
 	<key>NSMediaLibraryUsageDescription</key>
@@ -36,10 +38,22 @@
 	<string>This app may use the camera to pick media or artwork.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>This app requires microphone access for audio-related features.</string>
+
+	<!-- Background Audio Playback Mode -->
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>audio</string>
 	</array>
+
+	<!-- Enable iTunes & macOS Finder File Sharing -->
+    <key>UIFileSharingEnabled</key>
+    <true/>
+
+    <!-- Make the app's Documents folder visible in the iOS Files App -->
+    <key>LSSupportsOpeningDocumentsInPlace</key>
+    <true/>
+
+	<!-- Network Security Configuration for Streaming -->
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>
@@ -60,6 +74,8 @@
 			</dict>
 		</dict>
 	</dict>
+
+	<!-- Scene Manifest and Indirect Inputs -->
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
@@ -83,6 +99,8 @@
 	</dict>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+
+	<!-- Interface Orientations and Assets -->
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
@@ -100,7 +118,5 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
-	<key>NSAppleMusicUsageDescription</key>
-	<string>$(PROJECT_NAME) requires access to media library</string>
 </dict>
 </plist>

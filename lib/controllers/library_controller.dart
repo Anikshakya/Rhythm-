@@ -95,8 +95,27 @@ class LibraryController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    scanLibrary();
-    loadHistory();
+    // Run library scanning in background to avoid blocking UI
+    _initializeLibrary();
+  }
+
+  Future<void> _initializeLibrary() async {
+    try {
+      debugPrint('📚 LibraryController: Starting library initialization...');
+      await scanLibrary();
+      debugPrint('✅ LibraryController: Scan complete');
+    } catch (e) {
+      debugPrint('❌ LibraryController: Scan failed: $e');
+      error.value = 'Failed to scan library: $e';
+    }
+
+    try {
+      debugPrint('📚 LibraryController: Loading history...');
+      await loadHistory();
+      debugPrint('✅ LibraryController: History loaded');
+    } catch (e) {
+      debugPrint('❌ LibraryController: History load failed: $e');
+    }
   }
 
   Future<void> scanLibrary() async {

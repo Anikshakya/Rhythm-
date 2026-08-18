@@ -92,7 +92,7 @@ class _MainNavigationState extends State<MainNavigation> {
             bottom: (!Platform.isIOS && MediaQuery.of(context).viewInsets.bottom > 0)
                 ? 10.0
                 : Platform.isIOS
-                    ? (bottomPadding > 0 ? bottomPadding * 2 + 4 : 6 * 2)
+                    ? (bottomPadding > 0 ? bottomPadding * 2.2 + 4 : 6 * 2)
                     : (bottomPadding > 0 ? bottomPadding * 2 : 58 + 10),
             child: MiniPlayer(
               onTap: _navigateToPlayer,
@@ -146,7 +146,7 @@ class _CustomFloatingNavBarState extends State<CustomFloatingNavBar> {
         right: 20,
         bottom:
             Platform.isIOS
-                ? (bottomInset > 0 ? bottomInset * 0.24 : 6)
+                ? (bottomInset > 0 ? bottomInset * 0.50 : 6)
                 : (bottomInset > 0 ? bottomInset * 0.24 : 6),
       ),
       child: ClipRRect(

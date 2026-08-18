@@ -17,7 +17,18 @@ class OnlineController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    fetchOnlineMusic();
+    // Fetch online music in background to avoid blocking startup
+    _initializeOnlineContent();
+  }
+
+  Future<void> _initializeOnlineContent() async {
+    try {
+      debugPrint('🌐 OnlineController: Fetching online music...');
+      await fetchOnlineMusic();
+      debugPrint('✅ OnlineController: Online music loaded');
+    } catch (e) {
+      debugPrint('❌ OnlineController: Failed to fetch online music: $e');
+    }
   }
 
   Future<void> fetchOnlineMusic() async {

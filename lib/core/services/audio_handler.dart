@@ -1,8 +1,10 @@
 // ignore_for_file: deprecated_member_use
 
 import 'dart:async';
+import 'dart:io';
 import 'dart:math';
 import 'package:audio_service/audio_service.dart';
+import 'package:audio_session/audio_session.dart';
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:just_audio/just_audio.dart';
@@ -18,6 +20,8 @@ Future<void> initAudioService() async {
   if (_isInitialized) return;
 
   try {
+    debugPrint('🔊 initAudioService: Starting initialization...');
+
     audioHandler = await AudioService.init(
       builder: () => RhythmAudioHandler(),
       config: const AudioServiceConfig(
@@ -29,11 +33,16 @@ Future<void> initAudioService() async {
         androidNotificationIcon: 'drawable/ic_launcher',
       ),
     );
+
+    // Await native audio session allocation before allowing UI queue calls
+    await (audioHandler as RhythmAudioHandler).initNativeSession();
+
     _isInitialized = true;
     debugPrint('✅ RhythmAudioHandler initialized successfully');
   } catch (e, stack) {
     debugPrint('❌ AudioService init error: $e');
-    debugPrint(stack.toString());
+    debugPrint('Stack: $stack');
+    rethrow;
   }
 }
 
@@ -59,41 +68,78 @@ class RhythmAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler
   Stream<double> get speedStream => _player.speedStream;
 
   RhythmAudioHandler() {
-    _initPlayer();
+    _setupListeners();
   }
 
-  void _initPlayer() async {
+  /// Explicit hardware configuration for iOS / Android physical devices.
+  Future<void> initNativeSession() async {
     try {
-      await _player.setAudioSource(_playlist);
-      await _player.setSpeed(_speed);
-    } catch (e) {
-      debugPrint("Error setting initial audio source or speed: $e");
-    }
+      debugPrint('🔊 [HANDLER] Initializing audio hardware layers...');
 
-    _player.playerStateStream.listen((playerState) {
-      _broadcastState(playerState);
-    });
-
-    _player.currentIndexStream.listen((index) {
-      if (_isUpdatingQueue) return;
-
-      if (index != null && index >= 0 && index < _rawQueue.length) {
-        final currentSong = _rawQueue[index];
-        _currentSongSubject.add(currentSong);
-        mediaItem.add(currentSong.toMediaItem());
-        DatabaseHelper.instance.recordPlay(currentSong);
-        _persistSession();
-        _checkAndAppendAutoplay();
-      } else {
-        _currentSongSubject.add(null);
-        mediaItem.add(null);
+      if (Platform.isIOS) {
+        debugPrint('🔊 [HANDLER] Configuring iOS audio session overrides...');
+        
+        // Run audio session setup asynchronously to avoid deadlocking the native thread
+        unawaited(
+          AudioSession.instance.then((session) async {
+            await session.configure(const AudioSessionConfiguration(
+              avAudioSessionCategory: AVAudioSessionCategory.playback,
+              avAudioSessionCategoryOptions: AVAudioSessionCategoryOptions.none,
+              avAudioSessionMode: AVAudioSessionMode.defaultMode,
+              avAudioSessionRouteSharingPolicy: AVAudioSessionRouteSharingPolicy.defaultPolicy,
+              avAudioSessionSetActiveOptions: AVAudioSessionSetActiveOptions.none,
+            ));
+            await session.setActive(true);
+            debugPrint('✅ [HANDLER] iOS audio session activated & locked');
+          }).catchError((e) {
+            debugPrint('❌ [HANDLER] AudioSession config error: $e');
+          }),
+        );
       }
-    });
 
+      // Set player audio source directly without blocking on AudioSession lock
+      debugPrint('🔊 [HANDLER] Setting initial playlist audio source...');
+      await _player.setAudioSource(_playlist, preload: false);
+      await _player.setSpeed(_speed);
+      debugPrint('✅ [HANDLER] Audio playback state ready');
+    } catch (e, stack) {
+      debugPrint('❌ [HANDLER] Error during initialization: $e');
+      debugPrint('Stack: $stack');
+    }
+  }
 
-    _player.positionStream.listen((pos) {
-      playbackState.add(playbackState.value.copyWith(updatePosition: pos));
-    });
+  void _setupListeners() {
+    try {
+      debugPrint('🔊 [HANDLER] Setting up listeners...');
+
+      _player.playerStateStream.listen((playerState) {
+        _broadcastState(playerState);
+      });
+
+      _player.currentIndexStream.listen((index) {
+        if (_isUpdatingQueue) return;
+
+        if (index != null && index >= 0 && index < _rawQueue.length) {
+          final currentSong = _rawQueue[index];
+          _currentSongSubject.add(currentSong);
+          mediaItem.add(currentSong.toMediaItem());
+          DatabaseHelper.instance.recordPlay(currentSong);
+          _persistSession();
+          _checkAndAppendAutoplay();
+        } else {
+          _currentSongSubject.add(null);
+          mediaItem.add(null);
+        }
+      });
+
+      _player.positionStream.listen((pos) {
+        playbackState.add(playbackState.value.copyWith(updatePosition: pos));
+      });
+
+      debugPrint('✅ [HANDLER] Listeners set up');
+    } catch (e) {
+      debugPrint('❌ [HANDLER] Error setting up listeners: $e');
+    }
   }
 
   static const MediaControl shuffleControl = MediaControl(
@@ -156,10 +202,15 @@ class RhythmAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler
   // ================= UNIFIED QUEUE & PLAYBACK API =================
 
   Future<void> setQueue(List<Song> songs, {int initialIndex = 0}) async {
-    if (songs.isEmpty) return;
+    if (songs.isEmpty) {
+      debugPrint('❌ [HANDLER] setQueue: No songs provided');
+      return;
+    }
 
     _isUpdatingQueue = true;
     try {
+      debugPrint('🔊 [HANDLER] setQueue: Setting queue with ${songs.length} songs');
+
       _rawQueue.clear();
       _rawQueue.addAll(songs);
 
@@ -171,19 +222,43 @@ class RhythmAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler
       _currentSongSubject.add(selectedSong);
       mediaItem.add(selectedSong.toMediaItem());
 
-      final sources = songs.map((s) => s.toAudioSource()).toList();
+      final sources = <AudioSource>[];
+      for (var song in songs) {
+        try {
+          sources.add(song.toAudioSource());
+        } catch (e) {
+          debugPrint('❌ [HANDLER] Failed to create audio source for ${song.title}: $e');
+        }
+      }
+
+      if (sources.isEmpty) {
+        debugPrint('❌ [HANDLER] No valid audio sources created!');
+        _isUpdatingQueue = false;
+        return;
+      }
+
       await _playlist.clear();
       await _playlist.addAll(sources);
-      await _player.seek(Duration.zero, index: validIndex);
-      
+
+      // Re-assign audio source with target index directly for reliable iOS source binding
+      await _player.setAudioSource(
+        _playlist,
+        initialIndex: validIndex,
+        initialPosition: Duration.zero,
+      );
+
       try {
         await _player.setSpeed(_speed);
       } catch (e) {
-        debugPrint('Error re-applying speed on player: $e');
+        debugPrint('⚠️  [HANDLER] Error re-applying speed: $e');
       }
-      
-      // Start playing in background without blocking this Future's completion
-      _player.play();
+
+      debugPrint('🔊 [HANDLER] Starting playback...');
+      await _player.play();
+      debugPrint('✅ [HANDLER] setQueue completed - now playing');
+    } catch (e, stack) {
+      debugPrint('❌ [HANDLER] setQueue error: $e');
+      debugPrint('Stack: $stack');
     } finally {
       _isUpdatingQueue = false;
     }
@@ -236,17 +311,39 @@ class RhythmAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler
   @override
   Future<void> skipToQueueItem(int index) async {
     if (index < 0 || index >= _rawQueue.length) return;
-    await _player.seek(Duration.zero, index: index);
-    _player.play();
+    try {
+      await _player.seek(Duration.zero, index: index);
+      await _player.play();
+      debugPrint('✅ skipToQueueItem: Seeking to index $index and playing');
+    } catch (e) {
+      debugPrint('❌ skipToQueueItem error: $e');
+      rethrow;
+    }
   }
 
   @override
   Future<void> play() async {
-    _player.play();
+    try {
+      debugPrint('🎵 [HANDLER] play() called');
+      await _player.play();
+      debugPrint('✅ [HANDLER] play() succeeded');
+    } catch (e) {
+      debugPrint('❌ [HANDLER] play() failed: $e');
+      rethrow;
+    }
   }
 
   @override
-  Future<void> pause() => _player.pause();
+  Future<void> pause() async {
+    try {
+      debugPrint('⏸️  [HANDLER] pause() called');
+      await _player.pause();
+      debugPrint('✅ [HANDLER] pause() succeeded');
+    } catch (e) {
+      debugPrint('❌ [HANDLER] pause() failed: $e');
+      rethrow;
+    }
+  }
 
   @override
   Future<void> stop() async {
@@ -263,29 +360,51 @@ class RhythmAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler
 
   @override
   Future<void> skipToNext() async {
-    if (_player.hasNext) {
-      await _player.seekToNext();
-    } else if (_player.shuffleModeEnabled && _rawQueue.isNotEmpty) {
-      final shuffleIndices = _player.shuffleIndices;
-      if (shuffleIndices.isNotEmpty) {
-        await _player.seek(Duration.zero, index: shuffleIndices.first);
+    try {
+      debugPrint('⏭️  [HANDLER] skipToNext() called');
+      if (_player.hasNext) {
+        await _player.seekToNext();
+        debugPrint('✅ [HANDLER] skipToNext() used seekToNext()');
+      } else if (_player.shuffleModeEnabled && _rawQueue.isNotEmpty) {
+        final shuffleIndices = _player.shuffleIndices;
+        if (shuffleIndices.isNotEmpty) {
+          await _player.seek(Duration.zero, index: shuffleIndices.first);
+        } else {
+          final randomVal = Random().nextInt(_rawQueue.length);
+          await _player.seek(Duration.zero, index: randomVal);
+        }
+        debugPrint('✅ [HANDLER] skipToNext() used shuffle');
+      } else if (playbackState.value.repeatMode == AudioServiceRepeatMode.all && _rawQueue.isNotEmpty) {
+        await _player.seek(Duration.zero, index: 0);
+        debugPrint('✅ [HANDLER] skipToNext() used repeat all');
       } else {
-        final randomVal = Random().nextInt(_rawQueue.length);
-        await _player.seek(Duration.zero, index: randomVal);
+        debugPrint('⚠️  [HANDLER] skipToNext() no more songs');
       }
-    } else if (playbackState.value.repeatMode == AudioServiceRepeatMode.all && _rawQueue.isNotEmpty) {
-      await _player.seek(Duration.zero, index: 0);
+    } catch (e) {
+      debugPrint('❌ [HANDLER] skipToNext() failed: $e');
+      rethrow;
     }
   }
 
   @override
   Future<void> skipToPrevious() async {
-    if (_player.position.inSeconds > 3) {
-      await _player.seek(Duration.zero);
-    } else if (_player.hasPrevious) {
-      await _player.seekToPrevious();
-    } else if (_rawQueue.isNotEmpty) {
-      await _player.seek(Duration.zero, index: _rawQueue.length - 1);
+    try {
+      debugPrint('⏮️  [HANDLER] skipToPrevious() called');
+      if (_player.position.inSeconds > 3) {
+        await _player.seek(Duration.zero);
+        debugPrint('✅ [HANDLER] skipToPrevious() rewound current track');
+      } else if (_player.hasPrevious) {
+        await _player.seekToPrevious();
+        debugPrint('✅ [HANDLER] skipToPrevious() went to previous');
+      } else if (_rawQueue.isNotEmpty) {
+        await _player.seek(Duration.zero, index: _rawQueue.length - 1);
+        debugPrint('✅ [HANDLER] skipToPrevious() went to last');
+      } else {
+        debugPrint('⚠️  [HANDLER] skipToPrevious() no previous song');
+      }
+    } catch (e) {
+      debugPrint('❌ [HANDLER] skipToPrevious() failed: $e');
+      rethrow;
     }
   }
 
@@ -351,7 +470,6 @@ class RhythmAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler
       final currentIndex = _player.currentIndex;
       if (currentIndex == null) return;
 
-      // If we are playing the last item in the queue, pre-append the first autoplay song
       if (currentIndex == _rawQueue.length - 1) {
         final autoplayQueue = audioController.autoplayQueue;
         if (autoplayQueue.isNotEmpty) {
@@ -365,7 +483,6 @@ class RhythmAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler
   }
 
   Future<void> _persistSession() async {
-
     try {
       final idx = _player.currentIndex ?? 0;
       final posMs = _player.position.inMilliseconds;

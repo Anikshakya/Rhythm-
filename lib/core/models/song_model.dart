@@ -1,4 +1,5 @@
 import 'package:audio_service/audio_service.dart';
+import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
 
 enum AudioSourceType { local, network }
@@ -117,11 +118,18 @@ class Song {
 
   AudioSource toAudioSource() {
     final tag = toMediaItem();
-    if (source == AudioSourceType.local || uri.startsWith('/') || uri.startsWith('file://')) {
-      final cleanPath = uri.startsWith('file://') ? Uri.parse(uri).path : uri;
-      return AudioSource.uri(Uri.file(cleanPath), tag: tag);
-    } else {
-      return AudioSource.uri(Uri.parse(uri), tag: tag);
+    try {
+      if (source == AudioSourceType.local || uri.startsWith('/') || uri.startsWith('file://')) {
+        final cleanPath = uri.startsWith('file://') ? Uri.parse(uri).path : uri;
+        debugPrint('🎵 Creating local audio source: $cleanPath for $title');
+        return AudioSource.uri(Uri.file(cleanPath), tag: tag);
+      } else {
+        debugPrint('🎵 Creating network audio source: $uri for $title');
+        return AudioSource.uri(Uri.parse(uri), tag: tag);
+      }
+    } catch (e) {
+      debugPrint('❌ Error creating audio source for $title: $e');
+      rethrow;
     }
   }
 

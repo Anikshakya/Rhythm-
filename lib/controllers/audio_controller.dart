@@ -38,8 +38,21 @@ class AudioController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    _bindAudioHandler();
-    _initAutoplayListener();
+    try {
+      debugPrint('🎵 AudioController: Binding audio handler...');
+      _bindAudioHandler();
+      debugPrint('✅ AudioController: Audio handler bound');
+    } catch (e) {
+      debugPrint('❌ AudioController: Failed to bind audio handler: $e');
+    }
+
+    try {
+      debugPrint('🎵 AudioController: Initializing autoplay listener...');
+      _initAutoplayListener();
+      debugPrint('✅ AudioController: Autoplay listener initialized');
+    } catch (e) {
+      debugPrint('❌ AudioController: Failed to init autoplay listener: $e');
+    }
   }
 
   void _bindAudioHandler() {
@@ -101,34 +114,98 @@ class AudioController extends GetxController {
       _handler.setQueue(songs, initialIndex: initialIndex);
 
   Future<void> playSong(Song song, {List<Song>? contextQueue}) async {
-    if (currentSong.value?.id == song.id) {
-      if (!playing.value) {
-        await play();
+    try {
+      debugPrint('🎵 [CONTROLLER] playSong() called for: ${song.title}');
+      
+      if (currentSong.value?.id == song.id) {
+        debugPrint('🎵 [CONTROLLER] Song already playing, just resuming if paused');
+        if (!playing.value) {
+          await play();
+        }
+        return;
       }
-      return;
-    }
 
-    // Update UI immediately so player opens with the selected song rather than showing the previous one.
-    currentSong.value = song;
-    totalDuration.value = song.duration;
+      // Update UI immediately so player opens with the selected song
+      currentSong.value = song;
+      totalDuration.value = song.duration;
+      debugPrint('🎵 [CONTROLLER] UI updated with song: ${song.title}');
 
-    if (contextQueue != null && contextQueue.isNotEmpty) {
-      final index = contextQueue.indexWhere((s) => s.id == song.id);
-      await _handler.setQueue(
-        contextQueue,
-        initialIndex: index >= 0 ? index : 0,
-      );
-    } else {
-      await _handler.setQueue([song], initialIndex: 0);
+      if (contextQueue != null && contextQueue.isNotEmpty) {
+        final index = contextQueue.indexWhere((s) => s.id == song.id);
+        debugPrint('🎵 [CONTROLLER] Setting queue with ${contextQueue.length} songs at index $index');
+        await _handler.setQueue(
+          contextQueue,
+          initialIndex: index >= 0 ? index : 0,
+        );
+      } else {
+        debugPrint('🎵 [CONTROLLER] Setting single song queue');
+        await _handler.setQueue([song], initialIndex: 0);
+      }
+      debugPrint('✅ [CONTROLLER] playSong() completed');
+    } catch (e) {
+      debugPrint('❌ [CONTROLLER] playSong() failed: $e');
     }
   }
 
-  Future<void> play() => _handler.play();
-  Future<void> pause() => _handler.pause();
-  Future<void> stop() => _handler.stop();
-  Future<void> seek(Duration duration) => _handler.seek(duration);
-  Future<void> next() => _handler.skipToNext();
-  Future<void> previous() => _handler.skipToPrevious();
+  Future<void> play() async {
+    try {
+      debugPrint('🎵 [CONTROLLER] play() called');
+      await _handler.play();
+      debugPrint('✅ [CONTROLLER] play() succeeded');
+    } catch (e) {
+      debugPrint('❌ [CONTROLLER] play() failed: $e');
+    }
+  }
+
+  Future<void> pause() async {
+    try {
+      debugPrint('⏸️  [CONTROLLER] pause() called');
+      await _handler.pause();
+      debugPrint('✅ [CONTROLLER] pause() succeeded');
+    } catch (e) {
+      debugPrint('❌ [CONTROLLER] pause() failed: $e');
+    }
+  }
+
+  Future<void> stop() async {
+    try {
+      debugPrint('⏹️  [CONTROLLER] stop() called');
+      await _handler.stop();
+      debugPrint('✅ [CONTROLLER] stop() succeeded');
+    } catch (e) {
+      debugPrint('❌ [CONTROLLER] stop() failed: $e');
+    }
+  }
+
+  Future<void> seek(Duration duration) async {
+    try {
+      debugPrint('⏱️  [CONTROLLER] seek() called with ${duration.inSeconds}s');
+      await _handler.seek(duration);
+      debugPrint('✅ [CONTROLLER] seek() succeeded');
+    } catch (e) {
+      debugPrint('❌ [CONTROLLER] seek() failed: $e');
+    }
+  }
+
+  Future<void> next() async {
+    try {
+      debugPrint('⏭️  [CONTROLLER] next() called');
+      await _handler.skipToNext();
+      debugPrint('✅ [CONTROLLER] next() succeeded');
+    } catch (e) {
+      debugPrint('❌ [CONTROLLER] next() failed: $e');
+    }
+  }
+
+  Future<void> previous() async {
+    try {
+      debugPrint('⏮️  [CONTROLLER] previous() called');
+      await _handler.skipToPrevious();
+      debugPrint('✅ [CONTROLLER] previous() succeeded');
+    } catch (e) {
+      debugPrint('❌ [CONTROLLER] previous() failed: $e');
+    }
+  }
 
   Future<void> skipToQueueItem(int index) => _handler.skipToQueueItem(index);
 
