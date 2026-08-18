@@ -358,10 +358,25 @@ class RhythmAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler
   @override
   Future<void> seek(Duration position) => _player.seek(position);
 
+  void _syncCurrentSongFromPlayer() {
+    final index = _player.currentIndex;
+    if (index == null || index < 0 || index >= _rawQueue.length) {
+      _currentSongSubject.add(null);
+      mediaItem.add(null);
+      return;
+    }
+
+    final song = _rawQueue[index];
+    _currentSongSubject.add(song);
+    mediaItem.add(song.toMediaItem());
+  }
+
   @override
   Future<void> skipToNext() async {
     try {
       debugPrint('⏭️  [HANDLER] skipToNext() called');
+      final wasPlaying = _player.playing;
+
       if (_player.hasNext) {
         await _player.seekToNext();
         debugPrint('✅ [HANDLER] skipToNext() used seekToNext()');
@@ -379,6 +394,12 @@ class RhythmAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler
         debugPrint('✅ [HANDLER] skipToNext() used repeat all');
       } else {
         debugPrint('⚠️  [HANDLER] skipToNext() no more songs');
+        return;
+      }
+
+      _syncCurrentSongFromPlayer();
+      if (wasPlaying) {
+        await _player.play();
       }
     } catch (e) {
       debugPrint('❌ [HANDLER] skipToNext() failed: $e');
@@ -390,6 +411,8 @@ class RhythmAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler
   Future<void> skipToPrevious() async {
     try {
       debugPrint('⏮️  [HANDLER] skipToPrevious() called');
+      final wasPlaying = _player.playing;
+
       if (_player.position.inSeconds > 3) {
         await _player.seek(Duration.zero);
         debugPrint('✅ [HANDLER] skipToPrevious() rewound current track');
@@ -401,6 +424,12 @@ class RhythmAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler
         debugPrint('✅ [HANDLER] skipToPrevious() went to last');
       } else {
         debugPrint('⚠️  [HANDLER] skipToPrevious() no previous song');
+        return;
+      }
+
+      _syncCurrentSongFromPlayer();
+      if (wasPlaying) {
+        await _player.play();
       }
     } catch (e) {
       debugPrint('❌ [HANDLER] skipToPrevious() failed: $e');
