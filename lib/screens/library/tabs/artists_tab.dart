@@ -1,17 +1,9 @@
-import 'dart:ui';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:audio_service/audio_service.dart';
 import 'package:melo/screens/artist/artist_songs_screen.dart';
-import '../../../controllers/audio_controller.dart';
 import '../../../controllers/library_controller.dart';
 import '../../../widgets/artwork_widget.dart';
 import '../../../widgets/custom_scroll_animation.dart';
-import '../../../widgets/miniplayer.dart';
-import '../../../widgets/fullscreen_player.dart';
-import '../../../widgets/song_tile.dart';
-import '../../../core/models/song_model.dart';
 import 'package:on_audio_query/on_audio_query.dart';
 
 class ArtistsTab extends StatelessWidget {
