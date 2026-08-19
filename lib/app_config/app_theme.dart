@@ -4,7 +4,7 @@ class AppTheme {
   AppTheme._();
 
   // Signature Apple Music Red / Pink Accent
-  static const Color primary = Color(0xFFD4AF37);
+  static const Color primary = Color.fromARGB(255, 210, 187, 111);
   static const Color darkBackground = Color(0xFF000000);
   static const Color darkCard = Color(0xFF1C1C1E);
   static const Color lightBackground = Color(0xFFF2F2F7);
