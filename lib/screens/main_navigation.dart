@@ -105,9 +105,9 @@ class _MainNavigationState extends State<MainNavigation> {
         selectedIndex: _selectedIndex,
         onTap: _onTabTapped,
         items: const [
-          _NavBarItemData(icon: CupertinoIcons.music_albums, label: 'Library'),
-          _NavBarItemData(icon: CupertinoIcons.globe, label: 'Online'),
-          _NavBarItemData(icon: CupertinoIcons.settings, label: 'Settings'),
+          NavBarItemData(icon: CupertinoIcons.music_albums, label: 'Library'),
+          NavBarItemData(icon: CupertinoIcons.globe, label: 'Online'),
+          NavBarItemData(icon: CupertinoIcons.settings, label: 'Settings'),
         ],
       ),
     );
@@ -118,7 +118,7 @@ class _MainNavigationState extends State<MainNavigation> {
 class CustomFloatingNavBar extends StatefulWidget {
   final int selectedIndex;
   final ValueChanged<int> onTap;
-  final List<_NavBarItemData> items;
+  final List<NavBarItemData> items;
 
   const CustomFloatingNavBar({
     super.key,
@@ -321,9 +321,9 @@ class _CustomFloatingNavBarState extends State<CustomFloatingNavBar> {
   }
 }
 
-class _NavBarItemData {
+class NavBarItemData {
   final IconData icon;
   final String label;
 
-  const _NavBarItemData({required this.icon, required this.label});
+  const NavBarItemData({required this.icon, required this.label});
 }

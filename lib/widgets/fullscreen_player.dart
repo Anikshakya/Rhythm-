@@ -403,9 +403,11 @@ class _FullScreenPlayerState extends State<FullScreenPlayer>
                           }
                         } catch (e) {
                           debugPrint('UI: Playback error: $e');
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Playback error: $e')),
-                          );
+                          if(context.mounted){
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Playback error: $e')),
+                            );                            
+                          }
                         }
                       },
                       child: Container(
