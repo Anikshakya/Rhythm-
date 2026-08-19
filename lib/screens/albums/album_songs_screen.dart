@@ -103,6 +103,25 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
     );
   }
 
+  // Helper method to format total album duration
+  String _formatTotalDuration(List<Song> songs) {
+    int totalMilliseconds = songs.fold(
+      0,
+      (sum, song) => sum + song.duration.inMilliseconds,
+    );
+    int totalSeconds = (totalMilliseconds / 1000).floor();
+    int hours = totalSeconds ~/ 3600;
+    int minutes = (totalSeconds % 3600) ~/ 60;
+
+    if (hours > 0) {
+      return '$hours hr ${minutes > 0 ? '$minutes mins' : ''}'.trim();
+    } else if (minutes > 0) {
+      return '$minutes mins';
+    } else {
+      return '< 1 min';
+    }
+  }
+
   void _showAlbumOptions(BuildContext context) {
     final theme = Theme.of(context);
     final typedSongs = List<Song>.from(widget.songs);
@@ -216,6 +235,8 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
         (anim.isCompleted &&
             anim.status != AnimationStatus.reverse &&
             anim.value >= 0.995);
+
+    final totalDurationStr = _formatTotalDuration(typedSongs);
 
     return Scaffold(
       backgroundColor: baseBgColor,
@@ -357,7 +378,7 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          '${typedSongs.first.artist} • ${typedSongs.length} Songs',
+                          '${typedSongs.first.artist} • ${typedSongs.length} Songs • $totalDurationStr',
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontSize: 13,

@@ -72,8 +72,8 @@ class ArtistsTab extends StatelessWidget {
                     child: ArtworkWidget(
                       songId: songs.first.id,
                       artworkUrl: sampleArt,
-                      size: 130,
-                      borderRadius: 65,
+                      size: 160,
+                      borderRadius: 24,
                       artworkType: ArtworkType.ARTIST,
                     ),
                   ),

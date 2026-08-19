@@ -104,6 +104,25 @@ class _ArtistDetailScreenState extends State<ArtistDetailScreen> {
     );
   }
 
+  // Helper method to format total artist duration
+  String _formatTotalDuration(List<Song> songs) {
+    int totalMilliseconds = songs.fold(
+      0,
+      (sum, song) => sum + song.duration.inMilliseconds,
+    );
+    int totalSeconds = (totalMilliseconds / 1000).floor();
+    int hours = totalSeconds ~/ 3600;
+    int minutes = (totalSeconds % 3600) ~/ 60;
+
+    if (hours > 0) {
+      return '$hours hr ${minutes > 0 ? '$minutes mins' : ''}'.trim();
+    } else if (minutes > 0) {
+      return '$minutes mins';
+    } else {
+      return '< 1 min';
+    }
+  }
+
   void _showArtistOptions(BuildContext context) {
     final theme = Theme.of(context);
     final typedSongs = List<Song>.from(widget.songs);
@@ -218,6 +237,8 @@ class _ArtistDetailScreenState extends State<ArtistDetailScreen> {
             anim.status != AnimationStatus.reverse &&
             anim.value >= 0.995);
 
+    final totalDurationStr = _formatTotalDuration(typedSongs);
+
     return Scaffold(
       backgroundColor: baseBgColor,
       body: Stack(
@@ -313,7 +334,6 @@ class _ArtistDetailScreenState extends State<ArtistDetailScreen> {
               parent: AlwaysScrollableScrollPhysics(),
             ),
             slivers: [
-              // ... keep all your existing content exactly the same
               SliverToBoxAdapter(
                 child: SafeArea(
                   bottom: false,
@@ -361,7 +381,7 @@ class _ArtistDetailScreenState extends State<ArtistDetailScreen> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          '${widget.artistName} • ${typedSongs.length} Songs',
+                          '${widget.artistName} • ${typedSongs.length} Songs • $totalDurationStr',
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontSize: 13,
@@ -490,34 +510,6 @@ class _ArtistDetailScreenState extends State<ArtistDetailScreen> {
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 14),
-                            Obx(
-                              () => AnimatedContainer(
-                                duration: const Duration(milliseconds: 200),
-                                width: 50,
-                                height: 50,
-                                decoration: BoxDecoration(
-                                  color: _isFavorite.value
-                                      ? primaryColor.withValues(alpha: 0.2)
-                                      : (isDark
-                                          ? Colors.white.withValues(alpha: 0.18)
-                                          : Colors.black.withValues(alpha: 0.08)),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: IconButton(
-                                  icon: Icon(
-                                    _isFavorite.value
-                                        ? CupertinoIcons.heart_fill
-                                        : CupertinoIcons.add,
-                                    size: 20,
-                                    color: _isFavorite.value
-                                        ? primaryColor
-                                        : theme.colorScheme.onSurface,
-                                  ),
-                                  onPressed: () => _isFavorite.toggle(),
-                                ),
-                              ),
-                            ),
                           ],
                         ),
                         const SizedBox(height: 28),
@@ -581,7 +573,7 @@ class _ArtistDetailScreenState extends State<ArtistDetailScreen> {
                           color: theme.colorScheme.onSurface,
                           size: 18,
                         ),
-                        onPressed: _goBack, // important
+                        onPressed: _goBack,
                       ),
                     ),
                     Container(
