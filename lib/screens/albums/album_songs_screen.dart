@@ -247,7 +247,7 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
             child: Container(color: baseBgColor),
           ),
 
-          // 2. Heavy blur – only when fully settled AND flag is true
+          // 2. Heavy blur – Positioned.fill is direct child of Stack, Opacity wraps internal content.
           Obx(() {
             final showHeavy = _allowHeavyUI.value && isFullySettled;
 
@@ -255,16 +255,16 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
               return const SizedBox.shrink();
             }
 
-            return TweenAnimationBuilder<double>(
-              key: const ValueKey('album_heavy_blur'),
-              tween: Tween(begin: 0.0, end: 1.0),
-              duration: const Duration(milliseconds: 300),
-              curve: Curves.easeOut,
-              builder: (context, opacity, child) {
-                return Opacity(opacity: opacity, child: child);
-              },
-              child: RepaintBoundary(
-                child: Positioned.fill(
+            return Positioned.fill(
+              child: TweenAnimationBuilder<double>(
+                key: const ValueKey('album_heavy_blur'),
+                tween: Tween(begin: 0.0, end: 1.0),
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeOut,
+                builder: (context, opacity, child) {
+                  return Opacity(opacity: opacity, child: child);
+                },
+                child: RepaintBoundary(
                   child: Stack(
                     children: [
                       Positioned.fill(

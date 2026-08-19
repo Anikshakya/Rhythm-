@@ -64,12 +64,13 @@ class _ArtistDetailScreenState extends State<ArtistDetailScreen> {
 
   void _scheduleHeavyUI() {
     if (_allowHeavyUI.value || !mounted) return;
-    Future.delayed(const Duration(milliseconds: 60), () {
-      if (mounted &&
-          _routeAnimation?.isCompleted == true &&
-          _routeAnimation?.status != AnimationStatus.reverse) {
-        _allowHeavyUI.value = true;
-      }
+    
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Future.delayed(const Duration(milliseconds: 40), () {
+        if (mounted && (_routeAnimation?.isCompleted ?? true)) {
+          _allowHeavyUI.value = true;
+        }
+      });
     });
   }
 
@@ -80,7 +81,6 @@ class _ArtistDetailScreenState extends State<ArtistDetailScreen> {
   }
 
   void _goBack() {
-    // Force flag off before the navigator starts the reverse animation
     _allowHeavyUI.value = false;
     Navigator.of(context).pop();
   }
@@ -229,13 +229,8 @@ class _ArtistDetailScreenState extends State<ArtistDetailScreen> {
     final primaryColor = theme.colorScheme.primary;
     final baseBgColor = theme.scaffoldBackgroundColor;
 
-    // Always read the current animation value in build
-    // so even if the Rx is slightly late we still hide the blur
     final anim = _routeAnimation;
-    final isFullySettled = anim == null ||
-        (anim.isCompleted &&
-            anim.status != AnimationStatus.reverse &&
-            anim.value >= 0.995);
+    final isFullySettled = anim == null || anim.isCompleted;
 
     final totalDurationStr = _formatTotalDuration(typedSongs);
 
@@ -248,7 +243,7 @@ class _ArtistDetailScreenState extends State<ArtistDetailScreen> {
             child: Container(color: baseBgColor),
           ),
 
-          // 2. Heavy blur – only when fully settled AND flag is true
+          // 2. Heavy blur – Positioned.fill is direct child of Stack, Opacity wraps internal content.
           Obx(() {
             final showHeavy = _allowHeavyUI.value && isFullySettled;
 
@@ -256,72 +251,74 @@ class _ArtistDetailScreenState extends State<ArtistDetailScreen> {
               return const SizedBox.shrink();
             }
 
-            return TweenAnimationBuilder<double>(
-              key: const ValueKey('heavy-blur'), // forces clean mount
-              tween: Tween(begin: 0.0, end: 1.0),
-              duration: const Duration(milliseconds: 300),
-              curve: Curves.easeOut,
-              builder: (context, opacity, child) {
-                return Opacity(opacity: opacity, child: child);
-              },
-              child: RepaintBoundary(
-                child: Positioned.fill(
-                  child: Stack(
-                    children: [
-                      Positioned.fill(
-                        child: ArtworkWidget(
-                          songId: typedSongs.first.id,
-                          artworkUrl: sampleArt,
-                          size: double.infinity,
-                          borderRadius: 0,
-                          artworkType: ArtworkType.ARTIST,
+            return Positioned.fill(
+              child: TweenAnimationBuilder<double>(
+                key: const ValueKey('heavy-blur'),
+                tween: Tween(begin: 0.0, end: 1.0),
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeOut,
+                builder: (context, opacity, child) {
+                  return Opacity(opacity: opacity, child: child);
+                },
+                child: RepaintBoundary(
+                  child: ClipRect(
+                    child: Stack(
+                      children: [
+                        Positioned.fill(
+                          child: ArtworkWidget(
+                            songId: typedSongs.first.id,
+                            artworkUrl: sampleArt,
+                            size: double.infinity,
+                            borderRadius: 0,
+                            artworkType: ArtworkType.ARTIST,
+                          ),
                         ),
-                      ),
-                      Positioned.fill(
-                        child: BackdropFilter(
-                          filter: ImageFilter.blur(sigmaX: 60, sigmaY: 60),
+                        Positioned.fill(
+                          child: BackdropFilter(
+                            filter: ImageFilter.blur(sigmaX: 40, sigmaY: 40),
+                            child: Container(
+                              color: isDark
+                                  ? Colors.black.withValues(alpha: 0.45)
+                                  : baseBgColor.withValues(alpha: 0.5),
+                            ),
+                          ),
+                        ),
+                        Positioned.fill(
                           child: Container(
-                            color: isDark
-                                ? Colors.black.withValues(alpha: 0.45)
-                                : baseBgColor.withValues(alpha: 0.5),
-                          ),
-                        ),
-                      ),
-                      Positioned.fill(
-                        child: Container(
-                          decoration: BoxDecoration(
-                            gradient: RadialGradient(
-                              center: const Alignment(0, -0.6),
-                              radius: 1.2,
-                              colors: [
-                                primaryColor.withValues(
-                                    alpha: isDark ? 0.45 : 0.35),
-                                primaryColor.withValues(
-                                    alpha: isDark ? 0.2 : 0.1),
-                                baseBgColor.withValues(alpha: 0.95),
-                              ],
-                              stops: const [0.0, 0.5, 1.0],
+                            decoration: BoxDecoration(
+                              gradient: RadialGradient(
+                                center: const Alignment(0, -0.6),
+                                radius: 1.2,
+                                colors: [
+                                  primaryColor.withValues(
+                                      alpha: isDark ? 0.45 : 0.35),
+                                  primaryColor.withValues(
+                                      alpha: isDark ? 0.2 : 0.1),
+                                  baseBgColor.withValues(alpha: 0.95),
+                                ],
+                                stops: const [0.0, 0.5, 1.0],
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                      Positioned.fill(
-                        child: Container(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: [
-                                Colors.transparent,
-                                baseBgColor.withValues(alpha: 0.8),
-                                baseBgColor,
-                              ],
-                              stops: const [0.0, 0.65, 1.0],
+                        Positioned.fill(
+                          child: Container(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: [
+                                  Colors.transparent,
+                                  baseBgColor.withValues(alpha: 0.8),
+                                  baseBgColor,
+                                ],
+                                stops: const [0.0, 0.65, 1.0],
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
