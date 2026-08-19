@@ -74,7 +74,6 @@ class PlaylistDetailScreen extends StatelessWidget {
   const PlaylistDetailScreen({super.key, required this.playlist});
 
   void _navigateToPlayer(BuildContext context) {
-    final theme = Theme.of(context);
 
     showModalBottomSheet(
       context: context,
