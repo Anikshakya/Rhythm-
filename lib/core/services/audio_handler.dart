@@ -34,7 +34,6 @@ Future<void> initAudioService() async {
       ),
     );
 
-    // Await native audio session allocation before allowing UI queue calls
     await (audioHandler as RhythmAudioHandler).initNativeSession();
 
     _isInitialized = true;
@@ -71,7 +70,6 @@ class RhythmAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler
     _setupListeners();
   }
 
-  /// Explicit hardware configuration for iOS / Android physical devices.
   Future<void> initNativeSession() async {
     try {
       debugPrint('🔊 [HANDLER] Initializing audio hardware layers...');
@@ -79,7 +77,6 @@ class RhythmAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler
       if (Platform.isIOS) {
         debugPrint('🔊 [HANDLER] Configuring iOS audio session overrides...');
         
-        // Run audio session setup asynchronously to avoid deadlocking the native thread
         unawaited(
           AudioSession.instance.then((session) async {
             await session.configure(const AudioSessionConfiguration(
@@ -97,7 +94,6 @@ class RhythmAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler
         );
       }
 
-      // Set player audio source directly without blocking on AudioSession lock
       debugPrint('🔊 [HANDLER] Setting initial playlist audio source...');
       await _player.setAudioSource(_playlist, preload: false);
       await _player.setSpeed(_speed);
@@ -240,7 +236,12 @@ class RhythmAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler
       await _playlist.clear();
       await _playlist.addAll(sources);
 
-      // Re-assign audio source with target index directly for reliable iOS source binding
+      // Explicitly reset shuffle mode state when loading fresh non-shuffled queue
+      await _player.setShuffleModeEnabled(false);
+      playbackState.add(playbackState.value.copyWith(
+        shuffleMode: AudioServiceShuffleMode.none,
+      ));
+
       await _player.setAudioSource(
         _playlist,
         initialIndex: validIndex,
@@ -380,15 +381,6 @@ class RhythmAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler
       if (_player.hasNext) {
         await _player.seekToNext();
         debugPrint('✅ [HANDLER] skipToNext() used seekToNext()');
-      } else if (_player.shuffleModeEnabled && _rawQueue.isNotEmpty) {
-        final shuffleIndices = _player.shuffleIndices;
-        if (shuffleIndices.isNotEmpty) {
-          await _player.seek(Duration.zero, index: shuffleIndices.first);
-        } else {
-          final randomVal = Random().nextInt(_rawQueue.length);
-          await _player.seek(Duration.zero, index: randomVal);
-        }
-        debugPrint('✅ [HANDLER] skipToNext() used shuffle');
       } else if (playbackState.value.repeatMode == AudioServiceRepeatMode.all && _rawQueue.isNotEmpty) {
         await _player.seek(Duration.zero, index: 0);
         debugPrint('✅ [HANDLER] skipToNext() used repeat all');
@@ -458,10 +450,16 @@ class RhythmAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler
   @override
   Future<void> setShuffleMode(AudioServiceShuffleMode shuffleMode) async {
     final enabled = shuffleMode == AudioServiceShuffleMode.all;
-    await _player.setShuffleModeEnabled(enabled);
+
     if (enabled) {
+      // Enable shuffle mode and shuffle indices inside JustAudio
+      await _player.setShuffleModeEnabled(true);
       await _player.shuffle();
+    } else {
+      // Disable shuffle mode inside JustAudio
+      await _player.setShuffleModeEnabled(false);
     }
+
     playbackState.add(playbackState.value.copyWith(shuffleMode: shuffleMode));
     _persistSession();
   }
