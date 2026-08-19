@@ -74,6 +74,8 @@ class PlaylistDetailScreen extends StatelessWidget {
   const PlaylistDetailScreen({super.key, required this.playlist});
 
   void _navigateToPlayer(BuildContext context) {
+    final theme = Theme.of(context);
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -82,6 +84,7 @@ class PlaylistDetailScreen extends StatelessWidget {
       useSafeArea: false,
       builder: (context) {
         return ClipRRect(
+          // Uses theme card/dialog shape if defined, otherwise falls back to Theme border radius
           borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
           child: SizedBox(
             height: MediaQuery.of(context).size.height * 0.94,
@@ -94,6 +97,7 @@ class PlaylistDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final audioController = Get.find<AudioController>();
     final playlistController = Get.find<PlaylistController>();
 
@@ -102,9 +106,9 @@ class PlaylistDetailScreen extends StatelessWidget {
         title: Text(playlist.name),
         actions: [
           IconButton(
-            icon: const Icon(
+            icon: Icon(
               CupertinoIcons.play_circle_fill,
-              color: Color(0xFFFA2D48),
+              color: theme.colorScheme.primary, // Swapped hardcoded Color(0xFFFA2D48)
               size: 28,
             ),
             onPressed: () {
@@ -124,7 +128,12 @@ class PlaylistDetailScreen extends StatelessWidget {
             );
 
             if (currentPlaylist.songs.isEmpty) {
-              return const Center(child: Text('Playlist is empty'));
+              return Center(
+                child: Text(
+                  'Playlist is empty',
+                  style: theme.textTheme.bodyMedium, // Swapped unstyled text
+                ),
+              );
             }
 
             return ListView.builder(
@@ -136,12 +145,12 @@ class PlaylistDetailScreen extends StatelessWidget {
                   key: ValueKey('${song.id}_$index'),
                   direction: DismissDirection.endToStart,
                   background: Container(
-                    color: Colors.redAccent,
+                    color: theme.colorScheme.error, // Swapped hardcoded redAccent
                     alignment: Alignment.centerRight,
                     padding: const EdgeInsets.only(right: 20),
-                    child: const Icon(
+                    child: Icon(
                       CupertinoIcons.trash,
-                      color: Colors.white,
+                      color: theme.colorScheme.onError, // Swapped hardcoded white
                     ),
                   ),
                   onDismissed: (_) {
