@@ -17,13 +17,15 @@ class OnlineScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Discover Music', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+        title: const Text(
+          'Discover Music',
+          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+        ),
         centerTitle: false,
         elevation: 0,
       ),
       body: CustomScrollView(
         slivers: [
-
           /// SEARCH BAR
           SliverToBoxAdapter(
             child: Padding(
@@ -50,27 +52,29 @@ class OnlineScreen extends StatelessWidget {
                 );
               }
 
-              return SliverList(
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) {
+              return SliverPadding(
+                padding: EdgeInsetsGeometry.only(bottom: 66),
+                sliver: SliverList(
+                  delegate: SliverChildBuilderDelegate((context, index) {
                     final song = onlineController.searchResults[index];
                     return SongTile(
                       song: song,
                       contextQueue: onlineController.searchResults,
                     );
-                  },
-                  childCount: onlineController.searchResults.length,
+                  }, childCount: onlineController.searchResults.length),
                 ),
               );
             }
 
             return SliverList(
               delegate: SliverChildListDelegate([
-
                 /// TRENDING CAROUSEL
                 const Padding(
                   padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  child: Text('Trending Songs', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                  child: Text(
+                    'Trending Songs',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
                 ),
                 SizedBox(
                   height: 180,
@@ -86,26 +90,41 @@ class OnlineScreen extends StatelessWidget {
                       itemBuilder: (context, index) {
                         final song = onlineController.trendingSongs[index];
                         return GestureDetector(
-                          onTap: () => audioController.playSong(song, contextQueue: onlineController.trendingSongs),
+                          onTap:
+                              () => audioController.playSong(
+                                song,
+                                contextQueue: onlineController.trendingSongs,
+                              ),
                           child: Container(
                             width: 130,
                             margin: const EdgeInsets.symmetric(horizontal: 6),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                ArtworkWidget(artworkUrl: song.artwork, size: 130, borderRadius: 12),
+                                ArtworkWidget(
+                                  artworkUrl: song.artwork,
+                                  size: 130,
+                                  borderRadius: 12,
+                                ),
                                 const SizedBox(height: 6),
                                 Text(
                                   song.title,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                  ),
                                 ),
                                 Text(
                                   song.artist,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(fontSize: 11, color: theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.6)),
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: theme.textTheme.bodyMedium?.color
+                                        ?.withValues(alpha: 0.6),
+                                  ),
                                 ),
                               ],
                             ),
@@ -121,16 +140,20 @@ class OnlineScreen extends StatelessWidget {
                 /// NEW RELEASES LIST
                 const Padding(
                   padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  child: Text('New Releases', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                  child: Text(
+                    'New Releases',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
                 ),
                 Obx(() {
                   return Column(
-                    children: onlineController.newReleases.map((song) {
-                      return SongTile(
-                        song: song,
-                        contextQueue: onlineController.newReleases,
-                      );
-                    }).toList(),
+                    children:
+                        onlineController.newReleases.map((song) {
+                          return SongTile(
+                            song: song,
+                            contextQueue: onlineController.newReleases,
+                          );
+                        }).toList(),
                   );
                 }),
               ]),
