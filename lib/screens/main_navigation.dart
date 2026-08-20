@@ -4,6 +4,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'library/library_screen.dart';
 import 'online/online_screen.dart';
+import 'playlists/playlists_screen.dart';
 import 'settings/settings_screen.dart';
 import '../widgets/miniplayer.dart';
 import '../widgets/fullscreen_player.dart';
@@ -65,6 +66,7 @@ class _MainNavigationState extends State<MainNavigation> {
   Widget build(BuildContext context) {
     final List<Widget> screens = [
       LibraryScreen(onNavigateToPlayer: _navigateToPlayer),
+      PlaylistsScreen(onNavigateToPlayer: _navigateToPlayer),
       const OnlineScreen(),
       const SettingsScreen(),
     ];
@@ -106,6 +108,7 @@ class _MainNavigationState extends State<MainNavigation> {
         onTap: _onTabTapped,
         items: const [
           NavBarItemData(icon: CupertinoIcons.music_albums, label: 'Library'),
+          NavBarItemData(icon: CupertinoIcons.music_note_list, label: 'Playlists'),
           NavBarItemData(icon: CupertinoIcons.globe, label: 'Online'),
           NavBarItemData(icon: CupertinoIcons.settings, label: 'Settings'),
         ],

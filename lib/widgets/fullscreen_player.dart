@@ -1,5 +1,6 @@
 import 'dart:ui';
 
+import 'package:melo/screens/artist/artist_songs_screen.dart';
 import 'package:melo/widgets/audio_speed_dialogue.dart';
 import 'package:melo/widgets/ios_pop_over.dart';
 import 'package:melo/widgets/marquee_text.dart';
@@ -102,7 +103,10 @@ class _FullScreenPlayerState extends State<FullScreenPlayer>
 
       return Scaffold(
         extendBodyBehindAppBar: true,
-        backgroundColor: isDark ? const Color.fromARGB(255, 16, 16, 16) : const Color(0xffffffff),
+        backgroundColor:
+            isDark
+                ? const Color.fromARGB(255, 16, 16, 16)
+                : const Color(0xffffffff),
         body: Stack(
           children: [
             // Ambient Blur Backdrop
@@ -131,7 +135,15 @@ class _FullScreenPlayerState extends State<FullScreenPlayer>
                           filter: ImageFilter.blur(sigmaX: 60, sigmaY: 60),
                           child: Container(
                             decoration: BoxDecoration(
-                              color: isDark ? Colors.black.withValues(alpha: 0.06) : const Color.fromARGB(255, 235, 234, 234).withValues(alpha: 0.6),
+                              color:
+                                  isDark
+                                      ? Colors.black.withValues(alpha: 0.06)
+                                      : const Color.fromARGB(
+                                        255,
+                                        235,
+                                        234,
+                                        234,
+                                      ).withValues(alpha: 0.6),
                             ),
                           ),
                         ),
@@ -246,9 +258,7 @@ class _FullScreenPlayerState extends State<FullScreenPlayer>
                                 BoxShadow(
                                   color:
                                       isDark
-                                          ? Colors.white.withValues(
-                                            alpha: 0.25,
-                                          )
+                                          ? Colors.white.withValues(alpha: 0.25)
                                           : Colors.black.withValues(
                                             alpha: isPlaying ? 0.2 : 0.2,
                                           ),
@@ -301,17 +311,39 @@ class _FullScreenPlayerState extends State<FullScreenPlayer>
                                   height: 28,
                                 ),
                                 const SizedBox(height: 2),
-                                MarqueeText(
-                                  text: currentSong.artist,
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w500,
-                                    color:
-                                        isDark
-                                            ? Colors.white60
-                                            : Colors.black54,
+                                GestureDetector(
+                                  onTap: () {
+                                    final libraryController =
+                                        Get.find<LibraryController>();
+                                    final artistSongs =
+                                        libraryController.artists[currentSong
+                                            .artist] ??
+                                        [currentSong];
+                                    Navigator.pop(context);
+                                    Get.to(
+                                      () => ArtistDetailScreen(
+                                        key: ValueKey(
+                                          'artist_${currentSong.artist}',
+                                        ),
+                                        artistName: currentSong.artist,
+                                        songs: artistSongs,
+                                      ),
+                                      preventDuplicates: false,
+                                      transition: Transition.cupertinoDialog,
+                                    );
+                                  },
+                                  child: MarqueeText(
+                                    text: currentSong.artist,
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w500,
+                                      color:
+                                          isDark
+                                              ? Colors.white60
+                                              : Colors.black54,
+                                    ),
+                                    height: 22,
                                   ),
-                                  height: 22,
                                 ),
                               ],
                             ),
@@ -403,10 +435,10 @@ class _FullScreenPlayerState extends State<FullScreenPlayer>
                           }
                         } catch (e) {
                           debugPrint('UI: Playback error: $e');
-                          if(context.mounted){
+                          if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(content: Text('Playback error: $e')),
-                            );                            
+                            );
                           }
                         }
                       },

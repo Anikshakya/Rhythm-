@@ -5,7 +5,6 @@ import 'package:get/get.dart';
 import '../../controllers/theme_controller.dart';
 import 'tabs/albums_tab.dart';
 import 'tabs/artists_tab.dart';
-import 'tabs/playlists_tab.dart';
 import 'tabs/songs_tab.dart';
 
 class LibraryScreen extends StatefulWidget {
@@ -125,7 +124,6 @@ class _LibraryScreenState extends State<LibraryScreen> {
                         0: _buildSegmentText('Songs', 0, theme, isDark),
                         1: _buildSegmentText('Albums', 1, theme, isDark),
                         2: _buildSegmentText('Artists', 2, theme, isDark),
-                        3: _buildSegmentText('Playlists', 3, theme, isDark),
                       },
                       onValueChanged: (v) {
                         if (v != null) {
@@ -341,7 +339,6 @@ class _LibraryScreenState extends State<LibraryScreen> {
                   SongsTab(onNavigateToPlayer: widget.onNavigateToPlayer),
                   const AlbumsTab(),
                   const ArtistsTab(),
-                  PlaylistsTab(onNavigateToPlayer: widget.onNavigateToPlayer),
                 ],
               ),
             ),

@@ -68,14 +68,111 @@ class OnlineAudioService {
     ),
   ];
 
-  Future<List<Song>> fetchTrendingSongs() async {
-    await Future.delayed(const Duration(milliseconds: 300));
+  List<Song>? _cachedSongs;
+  DateTime? _lastFetchTime;
+
+  Future<List<Song>> _fetchAndResolveTopSongs() async {
+    if (_cachedSongs != null && _lastFetchTime != null &&
+        DateTime.now().difference(_lastFetchTime!) < const Duration(minutes: 5)) {
+      return _cachedSongs!;
+    }
+
+    try {
+      final url = Uri.parse('https://rss.applemarketingtools.com/api/v2/us/music/most-played/50/songs.json');
+      final response = await http.get(url).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final results = data['feed']?['results'] as List<dynamic>? ?? [];
+
+        final List<String> ids = [];
+        final Map<String, int> rankMap = {};
+        for (int i = 0; i < results.length; i++) {
+          final item = results[i];
+          final id = item['id']?.toString();
+          if (id != null) {
+            ids.add(id);
+            rankMap[id] = i;
+          }
+        }
+
+        if (ids.isNotEmpty) {
+          final lookupUrl = Uri.parse('https://itunes.apple.com/lookup?id=${ids.join(",")}&media=music');
+          final lookupResponse = await http.get(lookupUrl).timeout(const Duration(seconds: 10));
+
+          if (lookupResponse.statusCode == 200) {
+            final lookupData = jsonDecode(lookupResponse.body);
+            final lookupResults = lookupData['results'] as List<dynamic>? ?? [];
+
+            final List<Song> resolvedSongs = [];
+            for (var item in lookupResults) {
+              final previewUrl = item['previewUrl'] as String?;
+              if (previewUrl == null || previewUrl.isEmpty) continue;
+
+              final trackId = item['trackId']?.toString() ?? UniqueKey().toString();
+              final title = item['trackName'] ?? 'Unknown Track';
+              final artist = item['artistName'] ?? 'Unknown Artist';
+              final album = item['collectionName'] ?? 'Unknown Album';
+              final artwork = (item['artworkUrl100'] as String?)?.replaceAll('100x100bb', '600x600bb');
+              final durationMs = item['trackTimeMillis'] ?? 30000;
+              final genre = item['primaryGenreName'];
+              final releaseDateStr = item['releaseDate'] as String?;
+              final releaseDate = releaseDateStr != null ? DateTime.tryParse(releaseDateStr) : null;
+
+              resolvedSongs.add(
+                Song(
+                  id: 'itunes_$trackId',
+                  title: title,
+                  artist: artist,
+                  album: album,
+                  artwork: artwork,
+                  duration: Duration(milliseconds: durationMs),
+                  source: AudioSourceType.network,
+                  uri: previewUrl,
+                  streamUrl: previewUrl,
+                  genre: genre,
+                  lastPlayed: releaseDate,
+                ),
+              );
+            }
+
+            resolvedSongs.sort((a, b) {
+              final aId = a.id.replaceFirst('itunes_', '');
+              final bId = b.id.replaceFirst('itunes_', '');
+              final aRank = rankMap[aId] ?? 999;
+              final bRank = rankMap[bId] ?? 999;
+              return aRank.compareTo(bRank);
+            });
+
+            if (resolvedSongs.isNotEmpty) {
+              _cachedSongs = resolvedSongs;
+              _lastFetchTime = DateTime.now();
+              return resolvedSongs;
+            }
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Error fetching/resolving top songs: $e');
+    }
+
     return _sampleTrendingSongs;
   }
 
+  Future<List<Song>> fetchTrendingSongs() async {
+    final songs = await _fetchAndResolveTopSongs();
+    return songs.take(25).toList();
+  }
+
   Future<List<Song>> fetchNewReleases() async {
-    await Future.delayed(const Duration(milliseconds: 300));
-    return _sampleTrendingSongs.reversed.toList();
+    final songs = await _fetchAndResolveTopSongs();
+    final List<Song> sortedSongs = List.from(songs);
+    sortedSongs.sort((a, b) {
+      final aDate = a.lastPlayed ?? DateTime(1970);
+      final bDate = b.lastPlayed ?? DateTime(1970);
+      return bDate.compareTo(aDate);
+    });
+    return sortedSongs.take(25).toList();
   }
 
   Future<List<Song>> searchOnlineMusic(String query) async {
