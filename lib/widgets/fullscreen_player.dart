@@ -1,6 +1,8 @@
 import 'dart:ui';
 
 import 'package:melo/screens/artist/artist_songs_screen.dart';
+import 'package:melo/screens/albums/album_songs_screen.dart';
+import 'global_player_panel.dart';
 import 'package:melo/widgets/audio_speed_dialogue.dart';
 import 'package:melo/widgets/ios_pop_over.dart';
 import 'package:melo/widgets/marquee_text.dart';
@@ -169,7 +171,14 @@ class _FullScreenPlayerState extends State<FullScreenPlayer>
                           size: 22,
                           color: isDark ? Colors.white70 : Colors.black87,
                         ),
-                        onPressed: () => Navigator.of(context).pop(),
+                        onPressed: () {
+                          try {
+                            final panelController = Get.find<GlobalPlayerPanelController>();
+                            panelController.collapse();
+                          } catch (_) {
+                            Navigator.of(context).pop();
+                          }
+                        },
                       ),
                       Column(
                         children: [
@@ -183,12 +192,32 @@ class _FullScreenPlayerState extends State<FullScreenPlayer>
                             ),
                           ),
                           const SizedBox(height: 2),
-                          Text(
-                            currentSong?.album ?? 'Melo',
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: isDark ? Colors.white : Colors.black,
+                          GestureDetector(
+                            onTap: () {
+                              if (currentSong == null) return;
+                              final libraryController = Get.find<LibraryController>();
+                              final albumSongs = libraryController.albums[currentSong.album] ?? [currentSong];
+                              Navigator.pop(context);
+                              Get.to(
+                                () => AlbumDetailScreen(
+                                  key: ValueKey('album_${currentSong.album}'),
+                                  albumName: currentSong.album,
+                                  songs: albumSongs,
+                                ),
+                                preventDuplicates: false,
+                                transition: Transition.cupertinoDialog,
+                              );
+                            },
+                            child: MouseRegion(
+                              cursor: SystemMouseCursors.click,
+                              child: Text(
+                                currentSong?.album ?? 'Melo',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: isDark ? Colors.white : Colors.black,
+                                ),
+                              ),
                             ),
                           ),
                         ],
@@ -332,17 +361,20 @@ class _FullScreenPlayerState extends State<FullScreenPlayer>
                                       transition: Transition.cupertinoDialog,
                                     );
                                   },
-                                  child: MarqueeText(
-                                    text: currentSong.artist,
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w500,
-                                      color:
-                                          isDark
-                                              ? Colors.white60
-                                              : Colors.black54,
+                                  child: MouseRegion(
+                                    cursor: SystemMouseCursors.click,
+                                    child: MarqueeText(
+                                      text: currentSong.artist,
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w500,
+                                        color:
+                                            isDark
+                                                ? Colors.white60
+                                                : Colors.black54,
+                                      ),
+                                      height: 22,
                                     ),
-                                    height: 22,
                                   ),
                                 ),
                               ],

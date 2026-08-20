@@ -169,7 +169,8 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
                   onTap: () {
                     if (typedSongs.isNotEmpty) {
                       _isShuffled.value = true;
-                      final shuffledList = List<Song>.from(typedSongs)..shuffle();
+                      final shuffledList = List<Song>.from(typedSongs)
+                        ..shuffle();
                       audioController.playSong(
                         shuffledList.first,
                         contextQueue: shuffledList,
@@ -188,9 +189,8 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
                       _isFavorite.value
                           ? CupertinoIcons.heart_fill
                           : CupertinoIcons.heart,
-                      color: _isFavorite.value
-                          ? theme.colorScheme.primary
-                          : null,
+                      color:
+                          _isFavorite.value ? theme.colorScheme.primary : null,
                     ),
                     title: Text(
                       _isFavorite.value
@@ -218,12 +218,13 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
     final isDark = theme.brightness == Brightness.dark;
     final List<Song> typedSongs = List<Song>.from(widget.songs);
 
-    final sampleArt = typedSongs
-        .firstWhere(
-          (s) => s.artwork != null && s.artwork!.isNotEmpty,
-          orElse: () => typedSongs.first,
-        )
-        .artwork;
+    final sampleArt =
+        typedSongs
+            .firstWhere(
+              (s) => s.artwork != null && s.artwork!.isNotEmpty,
+              orElse: () => typedSongs.first,
+            )
+            .artwork;
 
     final primaryColor = theme.colorScheme.primary;
     final baseBgColor = theme.scaffoldBackgroundColor;
@@ -231,7 +232,8 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
     // Always read the current animation value in build
     // so even if the Rx is slightly late we still hide the blur
     final anim = _routeAnimation;
-    final isFullySettled = anim == null ||
+    final isFullySettled =
+        anim == null ||
         (anim.isCompleted &&
             anim.status != AnimationStatus.reverse &&
             anim.value >= 0.995);
@@ -243,9 +245,7 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
       body: Stack(
         children: [
           // 1. Always solid clean background
-          Positioned.fill(
-            child: Container(color: baseBgColor),
-          ),
+          Positioned.fill(child: Container(color: baseBgColor)),
 
           // 2. Heavy blur – Positioned.fill is direct child of Stack, Opacity wraps internal content.
           Obx(() {
@@ -279,9 +279,10 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
                         child: BackdropFilter(
                           filter: ImageFilter.blur(sigmaX: 60, sigmaY: 60),
                           child: Container(
-                            color: isDark
-                                ? Colors.black.withValues(alpha: 0.45)
-                                : baseBgColor.withValues(alpha: 0.5),
+                            color:
+                                isDark
+                                    ? Colors.black.withValues(alpha: 0.45)
+                                    : baseBgColor.withValues(alpha: 0.5),
                           ),
                         ),
                       ),
@@ -293,9 +294,11 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
                               radius: 1.2,
                               colors: [
                                 primaryColor.withValues(
-                                    alpha: isDark ? 0.45 : 0.35),
+                                  alpha: isDark ? 0.45 : 0.35,
+                                ),
                                 primaryColor.withValues(
-                                    alpha: isDark ? 0.2 : 0.1),
+                                  alpha: isDark ? 0.2 : 0.1,
+                                ),
                                 baseBgColor.withValues(alpha: 0.95),
                               ],
                               stops: const [0.0, 0.5, 1.0],
@@ -383,8 +386,9 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
                           style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w500,
-                            color: theme.colorScheme.onSurface
-                                .withValues(alpha: 0.6),
+                            color: theme.colorScheme.onSurface.withValues(
+                              alpha: 0.6,
+                            ),
                           ),
                         ),
                         const SizedBox(height: 24),
@@ -398,37 +402,46 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
                                 width: 50,
                                 height: 50,
                                 decoration: BoxDecoration(
-                                  color: isShuffled
-                                      ? primaryColor
-                                      : (isDark
-                                          ? Colors.white.withValues(alpha: 0.18)
-                                          : Colors.black.withValues(alpha: 0.08)),
+                                  color:
+                                      isShuffled
+                                          ? primaryColor
+                                          : (isDark
+                                              ? Colors.white.withValues(
+                                                alpha: 0.18,
+                                              )
+                                              : Colors.black.withValues(
+                                                alpha: 0.08,
+                                              )),
                                   shape: BoxShape.circle,
-                                  boxShadow: isShuffled
-                                      ? [
-                                          BoxShadow(
-                                            color: primaryColor
-                                                .withValues(alpha: 0.4),
-                                            blurRadius: 12,
-                                            offset: const Offset(0, 4),
-                                          ),
-                                        ]
-                                      : [],
+                                  boxShadow:
+                                      isShuffled
+                                          ? [
+                                            BoxShadow(
+                                              color: primaryColor.withValues(
+                                                alpha: 0.4,
+                                              ),
+                                              blurRadius: 12,
+                                              offset: const Offset(0, 4),
+                                            ),
+                                          ]
+                                          : [],
                                 ),
                                 child: IconButton(
                                   icon: Icon(
                                     CupertinoIcons.shuffle,
                                     size: 20,
-                                    color: isShuffled
-                                        ? Colors.white
-                                        : theme.colorScheme.onSurface,
+                                    color:
+                                        isShuffled
+                                            ? Colors.white
+                                            : theme.colorScheme.onSurface,
                                   ),
                                   onPressed: () {
                                     if (typedSongs.isEmpty) return;
                                     _isShuffled.toggle();
                                     if (_isShuffled.value) {
-                                      final shuffledList =
-                                          List<Song>.from(typedSongs)..shuffle();
+                                      final shuffledList = List<Song>.from(
+                                        typedSongs,
+                                      )..shuffle();
                                       audioController.playSong(
                                         shuffledList.first,
                                         contextQueue: shuffledList,
@@ -498,9 +511,10 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
                                       style: TextStyle(
                                         fontWeight: FontWeight.bold,
                                         fontSize: 15,
-                                        color: isDark
-                                            ? Colors.black
-                                            : Colors.white,
+                                        color:
+                                            isDark
+                                                ? Colors.black
+                                                : Colors.white,
                                       ),
                                     ),
                                   ),
@@ -519,24 +533,21 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
               SliverPadding(
                 padding: const EdgeInsets.only(bottom: 120),
                 sliver: SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) {
-                      final song = typedSongs[index];
-                      return SongTile(
-                        song: song,
-                        index: index,
-                        contextQueue: typedSongs,
-                        onTap: () {
-                          _isShuffled.value = false;
-                          audioController.playSong(
-                            song,
-                            contextQueue: typedSongs,
-                          );
-                        },
-                      );
-                    },
-                    childCount: typedSongs.length,
-                  ),
+                  delegate: SliverChildBuilderDelegate((context, index) {
+                    final song = typedSongs[index];
+                    return SongTile(
+                      song: song,
+                      index: index,
+                      contextQueue: typedSongs,
+                      onTap: () {
+                        _isShuffled.value = false;
+                        audioController.playSong(
+                          song,
+                          contextQueue: typedSongs,
+                        );
+                      },
+                    );
+                  }, childCount: typedSongs.length),
                 ),
               ),
             ],
@@ -559,9 +570,10 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
                   children: [
                     Container(
                       decoration: BoxDecoration(
-                        color: isDark
-                            ? Colors.black.withValues(alpha: 0.3)
-                            : Colors.white.withValues(alpha: 0.6),
+                        color:
+                            isDark
+                                ? Colors.black.withValues(alpha: 0.3)
+                                : Colors.white.withValues(alpha: 0.6),
                         shape: BoxShape.circle,
                       ),
                       child: IconButton(
@@ -575,9 +587,10 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
                     ),
                     Container(
                       decoration: BoxDecoration(
-                        color: isDark
-                            ? Colors.black.withValues(alpha: 0.3)
-                            : Colors.white.withValues(alpha: 0.6),
+                        color:
+                            isDark
+                                ? Colors.black.withValues(alpha: 0.3)
+                                : Colors.white.withValues(alpha: 0.6),
                         shape: BoxShape.circle,
                       ),
                       child: IconButton(

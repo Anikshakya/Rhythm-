@@ -66,8 +66,8 @@ class _MainNavigationState extends State<MainNavigation> {
   Widget build(BuildContext context) {
     final List<Widget> screens = [
       LibraryScreen(onNavigateToPlayer: _navigateToPlayer),
-      PlaylistsScreen(onNavigateToPlayer: _navigateToPlayer),
       const OnlineScreen(),
+      PlaylistsScreen(onNavigateToPlayer: _navigateToPlayer),
       const SettingsScreen(),
     ];
 
@@ -108,8 +108,8 @@ class _MainNavigationState extends State<MainNavigation> {
         onTap: _onTabTapped,
         items: const [
           NavBarItemData(icon: CupertinoIcons.music_albums, label: 'Library'),
-          NavBarItemData(icon: CupertinoIcons.music_note_list, label: 'Playlists'),
           NavBarItemData(icon: CupertinoIcons.globe, label: 'Online'),
+          NavBarItemData(icon: CupertinoIcons.music_note_list, label: 'Playlists'),
           NavBarItemData(icon: CupertinoIcons.settings, label: 'Settings'),
         ],
       ),

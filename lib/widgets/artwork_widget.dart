@@ -113,8 +113,8 @@ class _ArtworkWidgetState extends State<ArtworkWidget> {
         key: ValueKey(widget.artworkUrl!),
         fit: BoxFit.cover,
         gaplessPlayback: true,
-        cacheWidth: (widget.size * 2).toInt(),
-        cacheHeight: (widget.size * 2).toInt(),
+        cacheWidth: (widget.size.isFinite && !widget.size.isNaN) ? (widget.size * 2).toInt() : null,
+        cacheHeight: (widget.size.isFinite && !widget.size.isNaN) ? (widget.size * 2).toInt() : null,
         errorBuilder: (_, __, ___) => _buildPlaceholder(fallbackColor, isDark),
       );
     } else if (_bytes != null) {
@@ -164,7 +164,7 @@ class _ArtworkWidgetState extends State<ArtworkWidget> {
               ? CupertinoIcons.person_crop_circle_fill
               : CupertinoIcons.music_note,
           color: isDark ? Colors.white38 : Colors.black38,
-          size: widget.size * 0.45,
+          size: (widget.size.isFinite && !widget.size.isNaN) ? widget.size * 0.45 : 48,
         ),
       ),
     );

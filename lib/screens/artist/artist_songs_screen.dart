@@ -11,6 +11,8 @@ import '../../../widgets/miniplayer.dart';
 import '../../../widgets/fullscreen_player.dart';
 import '../../../widgets/song_tile.dart';
 import '../../../core/models/song_model.dart';
+import '../../../core/services/online_audio_service.dart';
+import '../albums/album_songs_screen.dart';
 
 class ArtistDetailScreen extends StatefulWidget {
   final String artistName;
@@ -31,9 +33,56 @@ class _ArtistDetailScreenState extends State<ArtistDetailScreen> {
   final RxBool _isPlayPressed = false.obs;
   final RxBool _isShuffled = false.obs;
 
+  final RxList<Song> artistSongs = <Song>[].obs;
+  final RxMap<String, List<Song>> artistAlbums = <String, List<Song>>{}.obs;
+  final RxBool isLoadingOnline = false.obs;
+
   // Only used to trigger the fade-in after the route has settled
   final RxBool _allowHeavyUI = false.obs;
   Animation<double>? _routeAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    artistSongs.assignAll(List<Song>.from(widget.songs));
+    _groupSongsByAlbum();
+
+    final isNetworkArtist = widget.songs.any(
+      (s) => s.source == AudioSourceType.network,
+    );
+    if (isNetworkArtist || widget.songs.length <= 1) {
+      _loadOnlineSongs();
+    }
+  }
+
+  void _groupSongsByAlbum() {
+    final Map<String, List<Song>> tempAlbums = {};
+    for (var song in artistSongs) {
+      if (song.album.isNotEmpty) {
+        tempAlbums.putIfAbsent(song.album, () => []).add(song);
+      }
+    }
+    artistAlbums.assignAll(tempAlbums);
+  }
+
+  Future<void> _loadOnlineSongs() async {
+    isLoadingOnline.value = true;
+    try {
+      final onlineService = OnlineAudioService();
+      final songs = await onlineService.fetchArtistSongs(widget.artistName);
+      if (songs.isNotEmpty) {
+        final Set<String> existingIds = artistSongs.map((s) => s.id).toSet();
+        final newSongs =
+            songs.where((s) => !existingIds.contains(s.id)).toList();
+        artistSongs.addAll(newSongs);
+        _groupSongsByAlbum();
+      }
+    } catch (e) {
+      debugPrint('Error loading online artist songs: $e');
+    } finally {
+      isLoadingOnline.value = false;
+    }
+  }
 
   @override
   void didChangeDependencies() {
@@ -64,7 +113,7 @@ class _ArtistDetailScreenState extends State<ArtistDetailScreen> {
 
   void _scheduleHeavyUI() {
     if (_allowHeavyUI.value || !mounted) return;
-    
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Future.delayed(const Duration(milliseconds: 40), () {
         if (mounted && (_routeAnimation?.isCompleted ?? true)) {
@@ -85,7 +134,7 @@ class _ArtistDetailScreenState extends State<ArtistDetailScreen> {
     Navigator.of(context).pop();
   }
 
-  void _navigateToPlayer(BuildContext context) {
+  void _navigateToPlayer() {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -125,7 +174,7 @@ class _ArtistDetailScreenState extends State<ArtistDetailScreen> {
 
   void _showArtistOptions(BuildContext context) {
     final theme = Theme.of(context);
-    final typedSongs = List<Song>.from(widget.songs);
+    final typedSongs = List<Song>.from(artistSongs);
     final audioController = Get.find<AudioController>();
 
     showModalBottomSheet(
@@ -170,7 +219,8 @@ class _ArtistDetailScreenState extends State<ArtistDetailScreen> {
                   onTap: () {
                     if (typedSongs.isNotEmpty) {
                       _isShuffled.value = true;
-                      final shuffledList = List<Song>.from(typedSongs)..shuffle();
+                      final shuffledList = List<Song>.from(typedSongs)
+                        ..shuffle();
                       audioController.playSong(
                         shuffledList.first,
                         contextQueue: shuffledList,
@@ -189,9 +239,8 @@ class _ArtistDetailScreenState extends State<ArtistDetailScreen> {
                       _isFavorite.value
                           ? CupertinoIcons.heart_fill
                           : CupertinoIcons.heart,
-                      color: _isFavorite.value
-                          ? theme.colorScheme.primary
-                          : null,
+                      color:
+                          _isFavorite.value ? theme.colorScheme.primary : null,
                     ),
                     title: Text(
                       _isFavorite.value
@@ -217,39 +266,35 @@ class _ArtistDetailScreenState extends State<ArtistDetailScreen> {
     final audioController = Get.find<AudioController>();
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final List<Song> typedSongs = List<Song>.from(widget.songs);
-
-    final sampleArt = typedSongs
-        .firstWhere(
-          (s) => s.artwork != null && s.artwork!.isNotEmpty,
-          orElse: () => typedSongs.first,
-        )
-        .artwork;
-
     final primaryColor = theme.colorScheme.primary;
     final baseBgColor = theme.scaffoldBackgroundColor;
 
     final anim = _routeAnimation;
     final isFullySettled = anim == null || anim.isCompleted;
 
-    final totalDurationStr = _formatTotalDuration(typedSongs);
-
     return Scaffold(
       backgroundColor: baseBgColor,
       body: Stack(
         children: [
           // 1. Always solid clean background
-          Positioned.fill(
-            child: Container(color: baseBgColor),
-          ),
+          Positioned.fill(child: Container(color: baseBgColor)),
 
           // 2. Heavy blur – Positioned.fill is direct child of Stack, Opacity wraps internal content.
           Obx(() {
             final showHeavy = _allowHeavyUI.value && isFullySettled;
+            final typedSongs = artistSongs;
 
-            if (!showHeavy) {
+            if (!showHeavy || typedSongs.isEmpty) {
               return const SizedBox.shrink();
             }
+
+            final sampleArt =
+                typedSongs
+                    .firstWhere(
+                      (s) => s.artwork != null && s.artwork!.isNotEmpty,
+                      orElse: () => typedSongs.first,
+                    )
+                    .artwork;
 
             return Positioned.fill(
               child: TweenAnimationBuilder<double>(
@@ -277,9 +322,10 @@ class _ArtistDetailScreenState extends State<ArtistDetailScreen> {
                           child: BackdropFilter(
                             filter: ImageFilter.blur(sigmaX: 40, sigmaY: 40),
                             child: Container(
-                              color: isDark
-                                  ? Colors.black.withValues(alpha: 0.45)
-                                  : baseBgColor.withValues(alpha: 0.5),
+                              color:
+                                  isDark
+                                      ? Colors.black.withValues(alpha: 0.45)
+                                      : baseBgColor.withValues(alpha: 0.5),
                             ),
                           ),
                         ),
@@ -291,9 +337,11 @@ class _ArtistDetailScreenState extends State<ArtistDetailScreen> {
                                 radius: 1.2,
                                 colors: [
                                   primaryColor.withValues(
-                                      alpha: isDark ? 0.45 : 0.35),
+                                    alpha: isDark ? 0.45 : 0.35,
+                                  ),
                                   primaryColor.withValues(
-                                      alpha: isDark ? 0.2 : 0.1),
+                                    alpha: isDark ? 0.2 : 0.1,
+                                  ),
                                   baseBgColor.withValues(alpha: 0.95),
                                 ],
                                 stops: const [0.0, 0.5, 1.0],
@@ -326,201 +374,348 @@ class _ArtistDetailScreenState extends State<ArtistDetailScreen> {
           }),
 
           // Content
-          CustomScrollView(
-            physics: const BouncingScrollPhysics(
-              parent: AlwaysScrollableScrollPhysics(),
-            ),
-            slivers: [
-              SliverToBoxAdapter(
-                child: SafeArea(
-                  bottom: false,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                    child: Column(
-                      children: [
-                        const SizedBox(height: 44),
-                        Center(
-                          child: Container(
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(22),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.35),
-                                  blurRadius: 30,
-                                  offset: const Offset(0, 14),
+          Obx(() {
+            final typedSongs = artistSongs;
+            if (typedSongs.isEmpty) {
+              return const Center(child: CupertinoActivityIndicator());
+            }
+
+            final sampleArt =
+                typedSongs
+                    .firstWhere(
+                      (s) => s.artwork != null && s.artwork!.isNotEmpty,
+                      orElse: () => typedSongs.first,
+                    )
+                    .artwork;
+
+            final totalDurationStr = _formatTotalDuration(typedSongs);
+
+            return CustomScrollView(
+              physics: const BouncingScrollPhysics(
+                parent: AlwaysScrollableScrollPhysics(),
+              ),
+              slivers: [
+                SliverToBoxAdapter(
+                  child: SafeArea(
+                    bottom: false,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                      child: Column(
+                        children: [
+                          const SizedBox(height: 44),
+                          Center(
+                            child: Container(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(22),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.35),
+                                    blurRadius: 30,
+                                    offset: const Offset(0, 14),
+                                  ),
+                                ],
+                              ),
+                              child: Hero(
+                                tag: ValueKey(
+                                  'artist_hero_${widget.artistName}',
                                 ),
-                              ],
-                            ),
-                            child: Hero(
-                              tag: ValueKey('artist_hero_${widget.artistName}'),
-                              child: ArtworkWidget(
-                                songId: typedSongs.first.id,
-                                artworkUrl: sampleArt,
-                                size: 210,
-                                borderRadius: 22,
-                                artworkType: ArtworkType.ARTIST,
+                                child: ArtworkWidget(
+                                  songId: typedSongs.first.id,
+                                  artworkUrl: sampleArt,
+                                  size: 210,
+                                  borderRadius: 22,
+                                  artworkType: ArtworkType.ARTIST,
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                        const SizedBox(height: 20),
-                        Text(
-                          widget.artistName,
-                          textAlign: TextAlign.center,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: -0.3,
-                            color: theme.colorScheme.onSurface,
+                          const SizedBox(height: 20),
+                          Text(
+                            widget.artistName,
+                            textAlign: TextAlign.center,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: -0.3,
+                              color: theme.colorScheme.onSurface,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          '${widget.artistName} • ${typedSongs.length} Songs • $totalDurationStr',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
-                            color: theme.colorScheme.onSurface
-                                .withValues(alpha: 0.6),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${widget.artistName} • ${typedSongs.length} Songs • $totalDurationStr',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                              color: theme.colorScheme.onSurface.withValues(
+                                alpha: 0.6,
+                              ),
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 24),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Obx(() {
-                              final isShuffled = _isShuffled.value;
-                              return AnimatedContainer(
-                                duration: const Duration(milliseconds: 200),
-                                width: 50,
-                                height: 50,
-                                decoration: BoxDecoration(
-                                  color: isShuffled
-                                      ? primaryColor
-                                      : (isDark
-                                          ? Colors.white.withValues(alpha: 0.18)
-                                          : Colors.black.withValues(alpha: 0.08)),
-                                  shape: BoxShape.circle,
-                                  boxShadow: isShuffled
-                                      ? [
-                                          BoxShadow(
-                                            color: primaryColor
-                                                .withValues(alpha: 0.4),
-                                            blurRadius: 12,
-                                            offset: const Offset(0, 4),
-                                          ),
-                                        ]
-                                      : [],
-                                ),
-                                child: IconButton(
-                                  icon: Icon(
-                                    CupertinoIcons.shuffle,
-                                    size: 20,
-                                    color: isShuffled
-                                        ? Colors.white
-                                        : theme.colorScheme.onSurface,
+                          const SizedBox(height: 24),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Obx(() {
+                                final isShuffled = _isShuffled.value;
+                                return AnimatedContainer(
+                                  duration: const Duration(milliseconds: 200),
+                                  width: 50,
+                                  height: 50,
+                                  decoration: BoxDecoration(
+                                    color:
+                                        isShuffled
+                                            ? primaryColor
+                                            : (isDark
+                                                ? Colors.white.withValues(
+                                                  alpha: 0.18,
+                                                )
+                                                : Colors.black.withValues(
+                                                  alpha: 0.08,
+                                                )),
+                                    shape: BoxShape.circle,
+                                    boxShadow:
+                                        isShuffled
+                                            ? [
+                                              BoxShadow(
+                                                color: primaryColor.withValues(
+                                                  alpha: 0.4,
+                                                ),
+                                                blurRadius: 12,
+                                                offset: const Offset(0, 4),
+                                              ),
+                                            ]
+                                            : [],
                                   ),
-                                  onPressed: () {
-                                    if (typedSongs.isEmpty) return;
-                                    _isShuffled.toggle();
-                                    if (_isShuffled.value) {
-                                      final shuffledList =
-                                          List<Song>.from(typedSongs)..shuffle();
-                                      audioController.playSong(
-                                        shuffledList.first,
-                                        contextQueue: shuffledList,
-                                      );
-                                      if (audioController.shuffleMode.value !=
-                                          AudioServiceShuffleMode.all) {
-                                        audioController.toggleShuffle();
-                                      }
-                                    } else {
-                                      audioController.playSong(
-                                        typedSongs.first,
-                                        contextQueue: typedSongs,
-                                      );
-                                      if (audioController.shuffleMode.value ==
-                                          AudioServiceShuffleMode.all) {
-                                        audioController.toggleShuffle();
-                                      }
-                                    }
-                                  },
-                                ),
-                              );
-                            }),
-                            const SizedBox(width: 14),
-                            GestureDetector(
-                              onTapDown: (_) => _isPlayPressed.value = true,
-                              onTapUp: (_) => _isPlayPressed.value = false,
-                              onTapCancel: () => _isPlayPressed.value = false,
-                              child: Obx(
-                                () => AnimatedScale(
-                                  scale: _isPlayPressed.value ? 0.94 : 1.0,
-                                  duration: const Duration(milliseconds: 100),
-                                  child: ElevatedButton.icon(
+                                  child: IconButton(
+                                    icon: Icon(
+                                      CupertinoIcons.shuffle,
+                                      size: 20,
+                                      color:
+                                          isShuffled
+                                              ? Colors.white
+                                              : theme.colorScheme.onSurface,
+                                    ),
                                     onPressed: () {
                                       if (typedSongs.isEmpty) return;
-                                      _isShuffled.value = false;
-                                      if (audioController.shuffleMode.value ==
-                                          AudioServiceShuffleMode.all) {
-                                        audioController.toggleShuffle();
+                                      _isShuffled.toggle();
+                                      if (_isShuffled.value) {
+                                        final shuffledList = List<Song>.from(
+                                          typedSongs,
+                                        )..shuffle();
+                                        audioController.playSong(
+                                          shuffledList.first,
+                                          contextQueue: shuffledList,
+                                        );
+                                        if (audioController.shuffleMode.value !=
+                                            AudioServiceShuffleMode.all) {
+                                          audioController.toggleShuffle();
+                                        }
+                                      } else {
+                                        audioController.playSong(
+                                          typedSongs.first,
+                                          contextQueue: typedSongs,
+                                        );
+                                        if (audioController.shuffleMode.value ==
+                                            AudioServiceShuffleMode.all) {
+                                          audioController.toggleShuffle();
+                                        }
                                       }
-                                      audioController.playSong(
-                                        typedSongs.first,
-                                        contextQueue: typedSongs,
-                                      );
                                     },
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor:
-                                          isDark ? Colors.white : Colors.black,
-                                      foregroundColor:
-                                          isDark ? Colors.black : Colors.white,
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 42,
-                                        vertical: 14,
+                                  ),
+                                );
+                              }),
+                              const SizedBox(width: 14),
+                              GestureDetector(
+                                onTapDown: (_) => _isPlayPressed.value = true,
+                                onTapUp: (_) => _isPlayPressed.value = false,
+                                onTapCancel: () => _isPlayPressed.value = false,
+                                child: Obx(
+                                  () => AnimatedScale(
+                                    scale: _isPlayPressed.value ? 0.94 : 1.0,
+                                    duration: const Duration(milliseconds: 100),
+                                    child: ElevatedButton.icon(
+                                      onPressed: () {
+                                        if (typedSongs.isEmpty) return;
+                                        _isShuffled.value = false;
+                                        if (audioController.shuffleMode.value ==
+                                            AudioServiceShuffleMode.all) {
+                                          audioController.toggleShuffle();
+                                        }
+                                        audioController.playSong(
+                                          typedSongs.first,
+                                          contextQueue: typedSongs,
+                                        );
+                                      },
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor:
+                                            isDark
+                                                ? Colors.white
+                                                : Colors.black,
+                                        foregroundColor:
+                                            isDark
+                                                ? Colors.black
+                                                : Colors.white,
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 42,
+                                          vertical: 14,
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            30,
+                                          ),
+                                        ),
+                                        elevation: 0,
                                       ),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(30),
+                                      icon: Icon(
+                                        CupertinoIcons.play_fill,
+                                        size: 18,
+                                        color:
+                                            isDark
+                                                ? Colors.black
+                                                : Colors.white,
                                       ),
-                                      elevation: 0,
-                                    ),
-                                    icon: Icon(
-                                      CupertinoIcons.play_fill,
-                                      size: 18,
-                                      color:
-                                          isDark ? Colors.black : Colors.white,
-                                    ),
-                                    label: Text(
-                                      'Play',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 15,
-                                        color: isDark
-                                            ? Colors.black
-                                            : Colors.white,
+                                      label: Text(
+                                        'Play',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 15,
+                                          color:
+                                              isDark
+                                                  ? Colors.black
+                                                  : Colors.white,
+                                        ),
                                       ),
                                     ),
                                   ),
                                 ),
                               ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 28),
-                      ],
+                            ],
+                          ),
+                          const SizedBox(height: 28),
+                        ],
+                      ),
                     ),
                   ),
                 ),
-              ),
-              // Tracklist
-              SliverPadding(
-                padding: const EdgeInsets.only(bottom: 120),
-                sliver: SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) {
+
+                // Albums section
+                if (artistAlbums.isNotEmpty)
+                  SliverToBoxAdapter(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 24.0,
+                            vertical: 8.0,
+                          ),
+                          child: Text(
+                            'Albums',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: -0.4,
+                            ),
+                          ),
+                        ),
+                        SizedBox(
+                          height: 180,
+                          child: ListView.builder(
+                            scrollDirection: Axis.horizontal,
+                            physics: const BouncingScrollPhysics(),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16.0,
+                            ),
+                            itemCount: artistAlbums.length,
+                            itemBuilder: (context, index) {
+                              final entry = artistAlbums.entries.elementAt(
+                                index,
+                              );
+                              final albumName = entry.key;
+                              final albumSongs = entry.value;
+                              final sampleArt =
+                                  albumSongs
+                                      .firstWhere(
+                                        (s) =>
+                                            s.artwork != null &&
+                                            s.artwork!.isNotEmpty,
+                                        orElse: () => albumSongs.first,
+                                      )
+                                      .artwork;
+
+                              return GestureDetector(
+                                onTap: () {
+                                  Get.to(
+                                    () => AlbumDetailScreen(
+                                      key: ValueKey('album_$albumName'),
+                                      albumName: albumName,
+                                      songs: albumSongs,
+                                    ),
+                                    preventDuplicates: false,
+                                    transition: Transition.cupertinoDialog,
+                                  );
+                                },
+                                child: Container(
+                                  width: 130,
+                                  margin: const EdgeInsets.symmetric(
+                                    horizontal: 8.0,
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Hero(
+                                        tag: ValueKey('album_hero_$albumName'),
+                                        child: ArtworkWidget(
+                                          songId: albumSongs.first.id,
+                                          artworkUrl: sampleArt,
+                                          size: 130,
+                                          borderRadius: 12,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        albumName,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      Text(
+                                        '${albumSongs.length} tracks',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          color: theme
+                                              .textTheme
+                                              .bodyMedium
+                                              ?.color
+                                              ?.withValues(alpha: 0.6),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+                    ),
+                  ),
+
+                // Tracklist
+                SliverPadding(
+                  padding: const EdgeInsets.only(bottom: 120),
+                  sliver: SliverList(
+                    delegate: SliverChildBuilderDelegate((context, index) {
                       final song = typedSongs[index];
                       return SongTile(
                         song: song,
@@ -534,12 +729,22 @@ class _ArtistDetailScreenState extends State<ArtistDetailScreen> {
                           );
                         },
                       );
-                    },
-                    childCount: typedSongs.length,
+                    }, childCount: typedSongs.length),
                   ),
                 ),
-              ),
-            ],
+              ],
+            );
+          }),
+
+          // Mini player
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 15,
+            child: MiniPlayer(
+              onTap: _navigateToPlayer,
+              onSwipeUp: _navigateToPlayer,
+            ),
           ),
 
           // Top bar
@@ -559,9 +764,10 @@ class _ArtistDetailScreenState extends State<ArtistDetailScreen> {
                   children: [
                     Container(
                       decoration: BoxDecoration(
-                        color: isDark
-                            ? Colors.black.withValues(alpha: 0.3)
-                            : Colors.white.withValues(alpha: 0.6),
+                        color:
+                            isDark
+                                ? Colors.black.withValues(alpha: 0.3)
+                                : Colors.white.withValues(alpha: 0.6),
                         shape: BoxShape.circle,
                       ),
                       child: IconButton(
@@ -575,9 +781,10 @@ class _ArtistDetailScreenState extends State<ArtistDetailScreen> {
                     ),
                     Container(
                       decoration: BoxDecoration(
-                        color: isDark
-                            ? Colors.black.withValues(alpha: 0.3)
-                            : Colors.white.withValues(alpha: 0.6),
+                        color:
+                            isDark
+                                ? Colors.black.withValues(alpha: 0.3)
+                                : Colors.white.withValues(alpha: 0.6),
                         shape: BoxShape.circle,
                       ),
                       child: IconButton(
@@ -592,17 +799,6 @@ class _ArtistDetailScreenState extends State<ArtistDetailScreen> {
                   ],
                 ),
               ),
-            ),
-          ),
-
-          // Mini player
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 15,
-            child: MiniPlayer(
-              onTap: () => _navigateToPlayer(context),
-              onSwipeUp: () => _navigateToPlayer(context),
             ),
           ),
         ],
