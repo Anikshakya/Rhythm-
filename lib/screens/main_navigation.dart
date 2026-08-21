@@ -1,14 +1,16 @@
 import 'dart:io';
 import 'dart:ui';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+
 import 'library/library_screen.dart';
 import 'online/online_screen.dart';
 import 'playlists/playlists_screen.dart';
 import 'settings/settings_screen.dart';
 import '../widgets/fullscreen_player.dart';
-import '../widgets/global_player_panel.dart';
+import '../widgets/global_player.dart';
 
 class MainNavigation extends StatefulWidget {
   const MainNavigation({super.key});
@@ -24,6 +26,7 @@ class _MainNavigationState extends State<MainNavigation> {
   @override
   void initState() {
     super.initState();
+
     _pageController = PageController(initialPage: _selectedIndex);
   }
 
@@ -35,7 +38,10 @@ class _MainNavigationState extends State<MainNavigation> {
 
   void _onTabTapped(int index) {
     if (index == _selectedIndex) return;
-    setState(() => _selectedIndex = index);
+
+    setState(() {
+      _selectedIndex = index;
+    });
 
     _pageController.animateToPage(
       index,
@@ -44,28 +50,16 @@ class _MainNavigationState extends State<MainNavigation> {
     );
   }
 
+  /// Opens the full-screen player directly.
+  ///
+  /// No GlobalPlayerPanelController is required anymore.
   void _navigateToPlayer() {
-    try {
-      final panelController = Get.find<GlobalPlayerPanelController>();
-      panelController.expand();
-    } catch (_) {
-      showModalBottomSheet(
-        context: context,
-        isScrollControlled: true,
-        backgroundColor: Colors.transparent,
-        enableDrag: true,
-        useSafeArea: false,
-        builder: (context) {
-          return ClipRRect(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-            child: SizedBox(
-              height: MediaQuery.of(context).size.height * 0.94,
-              child: const FullScreenPlayer(),
-            ),
-          );
-        },
-      );
-    }
+    Get.to(
+      () => const FullScreenPlayer(),
+      transition: Transition.downToUp,
+      duration: const Duration(milliseconds: 350),
+      fullscreenDialog: true,
+    );
   }
 
   @override
@@ -79,54 +73,47 @@ class _MainNavigationState extends State<MainNavigation> {
 
     return Scaffold(
       extendBody: true,
+
       body: PageView(
         controller: _pageController,
         physics: const BouncingScrollPhysics(),
         onPageChanged: (index) {
-          setState(() => _selectedIndex = index);
+          if (_selectedIndex != index) {
+            setState(() {
+              _selectedIndex = index;
+            });
+          }
         },
         children: screens,
       ),
-      bottomNavigationBar: Obx(() {
-        final panelController = Get.isRegistered<GlobalPlayerPanelController>()
-            ? Get.find<GlobalPlayerPanelController>()
-            : null;
-        final pos = panelController?.panelPosition.value ?? 0.0;
 
-        return Transform.translate(
-          offset: Offset(0, pos * 120),
-          child: Opacity(
-            opacity: (1.0 - pos * 2.5).clamp(0.0, 1.0),
-            child: IgnorePointer(
-              ignoring: pos > 0.1,
-              child: CustomFloatingNavBar(
-                selectedIndex: _selectedIndex,
-                onTap: _onTabTapped,
-                items: const [
-                  NavBarItemData(
-                    icon: CupertinoIcons.music_albums,
-                    label: 'Library',
-                  ),
-                  NavBarItemData(icon: CupertinoIcons.globe, label: 'Online'),
-                  NavBarItemData(
-                    icon: CupertinoIcons.music_note_list,
-                    label: 'Playlists',
-                  ),
-                  NavBarItemData(
-                    icon: CupertinoIcons.settings,
-                    label: 'Settings',
-                  ),
-                ],
-              ),
+      bottomNavigationBar: ValueListenableBuilder<double>(
+        valueListenable: GlobalPlayerPage.progressNotifier,
+        builder: (context, playerProgress, child) {
+          return Transform.translate(
+            offset: Offset(0, playerProgress * 100),
+            child: child,
+          );
+        },
+        child: CustomFloatingNavBar(
+          selectedIndex: _selectedIndex,
+          onTap: _onTabTapped,
+          items: const [
+            NavBarItemData(icon: CupertinoIcons.music_albums, label: 'Library'),
+            NavBarItemData(icon: CupertinoIcons.globe, label: 'Online'),
+            NavBarItemData(
+              icon: CupertinoIcons.music_note_list,
+              label: 'Playlists',
             ),
-          ),
-        );
-      }),
+            NavBarItemData(icon: CupertinoIcons.settings, label: 'Settings'),
+          ],
+        ),
+      ),
     );
   }
 }
 
-/// CUPERTINO SEGMENTED FLOATING NAVBAR WITH REAL-TIME DRAG TRACKING
+/// CUPERTINO SEGMENTED FLOATING NAVBAR
 class CustomFloatingNavBar extends StatefulWidget {
   final int selectedIndex;
   final ValueChanged<int> onTap;
@@ -185,46 +172,63 @@ class _CustomFloatingNavBarState extends State<CustomFloatingNavBar> {
             child: LayoutBuilder(
               builder: (context, constraints) {
                 final itemWidth = constraints.maxWidth / widget.items.length;
+
                 final maxLeft = constraints.maxWidth - itemWidth;
 
-                // Calculate current thumb position based on drag state
                 final double currentLeft =
                     _isDragging
                         ? (_dragX - (itemWidth / 2)).clamp(0.0, maxLeft)
                         : widget.selectedIndex * itemWidth;
 
+                final int currentActiveIndex =
+                    _isDragging
+                        ? (_dragX / itemWidth).floor().clamp(
+                          0,
+                          widget.items.length - 1,
+                        )
+                        : widget.selectedIndex;
+
                 return GestureDetector(
                   behavior: HitTestBehavior.opaque,
+
                   onHorizontalDragStart: (details) {
                     setState(() {
                       _isDragging = true;
                       _dragX = details.localPosition.dx;
                     });
                   },
+
                   onHorizontalDragUpdate: (details) {
                     setState(() {
-                      _dragX = details.localPosition.dx;
+                      _dragX = details.localPosition.dx.clamp(
+                        0.0,
+                        constraints.maxWidth,
+                      );
                     });
                   },
+
                   onHorizontalDragEnd: (details) {
-                    setState(() {
-                      _isDragging = false;
-                    });
-                    // Calculate nearest segment target upon finger release
                     final targetIndex = (_dragX / itemWidth).floor().clamp(
                       0,
                       widget.items.length - 1,
                     );
+
+                    setState(() {
+                      _isDragging = false;
+                    });
+
                     widget.onTap(targetIndex);
                   },
+
                   onHorizontalDragCancel: () {
                     setState(() {
                       _isDragging = false;
                     });
                   },
+
                   child: Stack(
                     children: [
-                      /// REAL-TIME SLIDING THUMB / PILL
+                      /// SLIDING THUMB
                       AnimatedPositioned(
                         duration: Duration(milliseconds: _isDragging ? 0 : 280),
                         curve: Curves.fastOutSlowIn,
@@ -250,25 +254,19 @@ class _CustomFloatingNavBarState extends State<CustomFloatingNavBar> {
                         ),
                       ),
 
-                      /// TAB CONTENT ITEMS
+                      /// TAB CONTENT
                       Row(
                         children: List.generate(widget.items.length, (index) {
-                          // Highlight item based on current thumb center position during drag
-                          final currentActiveIndex =
-                              _isDragging
-                                  ? (_dragX / itemWidth).floor().clamp(
-                                    0,
-                                    widget.items.length - 1,
-                                  )
-                                  : widget.selectedIndex;
-
                           final isSelected = currentActiveIndex == index;
+
                           final item = widget.items[index];
 
                           return Expanded(
                             child: GestureDetector(
                               behavior: HitTestBehavior.opaque,
-                              onTap: () => widget.onTap(index),
+                              onTap: () {
+                                widget.onTap(index);
+                              },
                               child: Center(
                                 child: Column(
                                   mainAxisSize: MainAxisSize.min,
@@ -292,7 +290,9 @@ class _CustomFloatingNavBarState extends State<CustomFloatingNavBar> {
                                         size: 19,
                                       ),
                                     ),
+
                                     const SizedBox(height: 2),
+
                                     AnimatedDefaultTextStyle(
                                       duration: const Duration(
                                         milliseconds: 180,

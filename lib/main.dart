@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:melo/widgets/global_player.dart';
 
 import 'app_config/app_theme.dart';
 
@@ -15,79 +16,39 @@ import 'core/services/audio_handler.dart';
 
 import 'screens/home/home_screen.dart';
 
-import 'widgets/fullscreen_player.dart';
-import 'widgets/global_player_panel.dart';
+final GlobalKey<OverlayState> globalOverlayKey = GlobalKey<OverlayState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   FlutterError.onError = (FlutterErrorDetails details) {
-    debugPrint(
-      '🔴 FLUTTER ERROR: '
-      '${details.exceptionAsString()}',
-    );
+    debugPrint('🔴 FLUTTER ERROR: ${details.exceptionAsString()}');
 
     debugPrint('${details.stack}');
   };
 
   try {
     // ==========================================================
-    // 1. AUDIO SERVICE
+    // AUDIO SERVICE
     // ==========================================================
 
-    debugPrint('🟡 [1/7] Starting initialization...');
-
-    debugPrint('🟡 [2/7] Initializing AudioService...');
+    debugPrint('🟡 Initializing AudioService...');
 
     await initAudioService();
 
-    debugPrint('✅ [2/7] AudioService initialized');
+    debugPrint('✅ AudioService initialized');
 
     // ==========================================================
-    // 2. THEME
+    // CONTROLLERS
     // ==========================================================
-
-    debugPrint('🟡 [3/7] Injecting ThemeController...');
 
     Get.put(ThemeController(), permanent: true);
 
-    debugPrint('✅ [3/7] ThemeController injected');
-
-    // ==========================================================
-    // 3. AUDIO
-    // ==========================================================
-
-    debugPrint('🟡 [4/7] Injecting AudioController...');
-
     Get.put(AudioController(), permanent: true);
-
-    debugPrint('✅ [4/7] AudioController injected');
-
-    // ==========================================================
-    // 4. LIBRARY
-    // ==========================================================
-
-    debugPrint('🟡 [5/7] Injecting LibraryController...');
 
     Get.put(LibraryController(), permanent: true);
 
-    debugPrint('✅ [5/7] LibraryController injected');
-
-    // ==========================================================
-    // 5. ONLINE
-    // ==========================================================
-
-    debugPrint('🟡 [6/7] Injecting OnlineController...');
-
     Get.put(OnlineController(), permanent: true);
-
-    debugPrint('✅ [6/7] OnlineController injected');
-
-    // ==========================================================
-    // 6. OTHER CONTROLLERS
-    // ==========================================================
-
-    debugPrint('🟡 [7/7] Injecting remaining controllers...');
 
     Get.put(PlaylistController(), permanent: true);
 
@@ -95,18 +56,15 @@ void main() async {
 
     Get.put(UnifiedSearchController(), permanent: true);
 
-    debugPrint('✅ [7/7] All controllers injected');
+    debugPrint('✅ All controllers injected');
 
     // ==========================================================
-    // 7. RUN APP
+    // RUN APP
     // ==========================================================
-
-    debugPrint('✅ Launching RhythmApp...');
 
     runApp(const RhythmApp());
   } catch (e, stack) {
     debugPrint('❌ FATAL ERROR: $e');
-
     debugPrint('Stack: $stack');
 
     runApp(ErrorApp(error: e.toString(), stack: stack.toString()));
@@ -131,61 +89,59 @@ class RhythmApp extends StatelessWidget {
         debugShowCheckedModeBanner: false,
 
         theme: AppTheme.lightTheme,
-
         darkTheme: AppTheme.darkTheme,
-
         themeMode: themeController.themeMode.value,
 
         initialRoute: '/',
 
         defaultTransition: Transition.cupertino,
 
-        // ======================================================
-        // NAVIGATOR OBSERVER
-        // ======================================================
-        navigatorObservers: [GlobalRouteObserver()],
+        getPages: [
+          // ====================================================
+          // HOME
+          // ====================================================
+          GetPage(name: '/', page: () => const HomeScreen()),
+
+          // ====================================================
+          // DO NOT USE THIS ROUTE FOR THE PLAYER
+          //
+          // The player is now controlled by GlobalPlayerPage.
+          // ====================================================
+        ],
 
         // ======================================================
-        // IMPORTANT
-        // ======================================================
-        //
-        // DO NOT put GlobalPlayerPanel here.
-        //
-        // This builder must remain normal so that the Navigator's
-        // Overlay stays available to dialogs, Cupertino sheets,
-        // OverlayPortal, showGeneralDialog, etc.
-        //
+        // GLOBAL APP LAYER
         // ======================================================
         builder: (context, child) {
-          return child ?? const SizedBox.shrink();
+          return Overlay(
+            key: globalOverlayKey,
+            initialEntries: [
+              // ==========================================================
+              // APP / NAVIGATOR
+              // ==========================================================
+              OverlayEntry(
+                builder: (context) {
+                  return child ?? const SizedBox.shrink();
+                },
+              ),
+
+              // ==========================================================
+              // GLOBAL PLAYER
+              //
+              // This is above every Navigator route.
+              // ==========================================================
+              OverlayEntry(
+                builder: (context) {
+                  return const GlobalPlayerPage();
+                },
+              ),
+            ],
+          );
         },
-
-        // ======================================================
-        // ROUTES
-        // ======================================================
-        getPages: [
-          GetPage(
-            name: '/',
-            page: () {
-              return GlobalPlayerPanel(child: const HomeScreen());
-            },
-          ),
-
-          GetPage(
-            name: '/player',
-            page: () {
-              return const FullScreenPlayer();
-            },
-            transition: Transition.downToUp,
-            transitionDuration: const Duration(milliseconds: 380),
-            curve: Curves.easeOutCubic,
-          ),
-        ],
       ),
     );
   }
 }
-
 // ============================================================
 // ERROR APP
 // ============================================================
