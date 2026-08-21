@@ -244,12 +244,23 @@ class _FullScreenPlayerState extends State<FullScreenPlayer>
                             },
                             child: MouseRegion(
                               cursor: SystemMouseCursors.click,
-                              child: Text(
-                                currentSong?.album ?? 'Melo',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                  color: isDark ? Colors.white : Colors.black,
+                              child: ConstrainedBox(
+                                constraints: BoxConstraints(
+                                  maxWidth:
+                                      MediaQuery.sizeOf(context).width - 140,
+                                ),
+                                child: MarqueeText(
+                                  text: currentSong?.album ?? 'Melo',
+                                  height: 20,
+                                  velocity: 22,
+                                  blankSpace: 36,
+                                  fadeWidth: 12,
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color:
+                                        isDark ? Colors.white : Colors.black,
+                                  ),
                                 ),
                               ),
                             ),
@@ -399,6 +410,8 @@ class _FullScreenPlayerState extends State<FullScreenPlayer>
 
                                 GestureDetector(
                                   onTap: () {
+                                    widget.onDismiss?.call();
+
                                     final libraryController =
                                         Get.find<LibraryController>();
 

@@ -72,6 +72,7 @@ class _MainNavigationState extends State<MainNavigation> with RouteAware {
   @override
   void didPushNext() {
     _isRouteActive = false;
+    GlobalPlayerPage.collapseCallback?.call();
     GlobalPlayerPage.bottomNavVisibleNotifier.value = false;
   }
 

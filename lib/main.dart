@@ -98,6 +98,7 @@ class RhythmApp extends StatelessWidget {
         navigatorObservers: [routeObserver],
         routingCallback: (routing) {
           if (routing != null && routing.current != '/') {
+            GlobalPlayerPage.collapseCallback?.call();
             GlobalPlayerPage.bottomNavVisibleNotifier.value = false;
           }
         },
