@@ -20,6 +20,7 @@ class MarqueeText extends StatefulWidget {
 
   /// Width of the fade at both edges.
   final double fadeWidth;
+  final TextAlign textAlign;
 
   const MarqueeText({
     super.key,
@@ -30,6 +31,7 @@ class MarqueeText extends StatefulWidget {
     this.pauseDuration = const Duration(milliseconds: 1200),
     this.blankSpace = 50,
     this.fadeWidth = 24,
+    this.textAlign = TextAlign.left,
   });
 
   @override
@@ -210,12 +212,16 @@ class _MarqueeTextState extends State<MarqueeText>
           // Text fits. No marquee required.
           if (!_needsScroll) {
             return Align(
-              alignment: Alignment.centerLeft,
+              alignment:
+                  widget.textAlign == TextAlign.center
+                      ? Alignment.center
+                      : Alignment.centerLeft,
               child: Text(
                 widget.text,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 softWrap: false,
+                textAlign: widget.textAlign,
                 style: widget.style,
               ),
             );

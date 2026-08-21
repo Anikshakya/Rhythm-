@@ -255,6 +255,7 @@ class _FullScreenPlayerState extends State<FullScreenPlayer>
                                   velocity: 22,
                                   blankSpace: 36,
                                   fadeWidth: 12,
+                                  textAlign: TextAlign.center,
                                   style: TextStyle(
                                     fontSize: 13,
                                     fontWeight: FontWeight.w600,

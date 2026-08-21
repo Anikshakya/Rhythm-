@@ -361,33 +361,6 @@ class _GlobalPlayerPageState extends State<GlobalPlayerPage>
                 ),
               ),
 
-            // ==================================================
-            // FULLSCREEN HANDLE
-            // ==================================================
-            if (progress > 0.75)
-              Positioned(
-                top: MediaQuery.paddingOf(context).top + 8,
-                left: 0,
-                right: 0,
-
-                child: IgnorePointer(
-                  child: Opacity(
-                    opacity: ((progress - 0.75) / 0.25).clamp(0.0, 1.0),
-
-                    child: Center(
-                      child: Container(
-                        width: 40,
-                        height: 4,
-
-                        decoration: BoxDecoration(
-                          color: Colors.grey.withValues(alpha: 0.5),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
           ],
           ),
         ),
