@@ -146,14 +146,17 @@ class OnlineScreen extends StatelessWidget {
                   ),
                 ),
                 Obx(() {
-                  return Column(
-                    children:
-                        onlineController.newReleases.map((song) {
-                          return SongTile(
-                            song: song,
-                            contextQueue: onlineController.newReleases,
-                          );
-                        }).toList(),
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 140.0),
+                    child: Column(
+                      children:
+                          onlineController.newReleases.map((song) {
+                            return SongTile(
+                              song: song,
+                              contextQueue: onlineController.newReleases,
+                            );
+                          }).toList(),
+                    ),
                   );
                 }),
               ]),

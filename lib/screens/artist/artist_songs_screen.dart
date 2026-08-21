@@ -7,8 +7,6 @@ import 'package:on_audio_query/on_audio_query.dart';
 
 import '../../../controllers/audio_controller.dart';
 import '../../../widgets/artwork_widget.dart';
-import '../../../widgets/miniplayer.dart';
-import '../../../widgets/fullscreen_player.dart';
 import '../../../widgets/song_tile.dart';
 import '../../../core/models/song_model.dart';
 import '../../../core/services/online_audio_service.dart';
@@ -132,25 +130,6 @@ class _ArtistDetailScreenState extends State<ArtistDetailScreen> {
   void _goBack() {
     _allowHeavyUI.value = false;
     Navigator.of(context).pop();
-  }
-
-  void _navigateToPlayer() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      enableDrag: true,
-      useSafeArea: false,
-      builder: (context) {
-        return ClipRRect(
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-          child: SizedBox(
-            height: MediaQuery.of(context).size.height * 0.94,
-            child: const FullScreenPlayer(),
-          ),
-        );
-      },
-    );
   }
 
   // Helper method to format total artist duration
@@ -735,17 +714,6 @@ class _ArtistDetailScreenState extends State<ArtistDetailScreen> {
               ],
             );
           }),
-
-          // Mini player
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 15,
-            child: MiniPlayer(
-              onTap: _navigateToPlayer,
-              onSwipeUp: _navigateToPlayer,
-            ),
-          ),
 
           // Top bar
           Positioned(

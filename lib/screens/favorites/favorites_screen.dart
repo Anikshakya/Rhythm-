@@ -3,31 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../controllers/audio_controller.dart';
 import '../../controllers/favorites_controller.dart';
-import '../../widgets/miniplayer.dart';
 import '../../widgets/song_tile.dart';
-import '../../widgets/fullscreen_player.dart';
 
 class FavoritesScreen extends StatelessWidget {
   const FavoritesScreen({super.key});
-
-  void _navigateToPlayer(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      enableDrag: true,
-      useSafeArea: false,
-      builder: (context) {
-        return ClipRRect(
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-          child: SizedBox(
-            height: MediaQuery.of(context).size.height * 0.94,
-            child: const FullScreenPlayer(),
-          ),
-        );
-      },
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -69,73 +48,58 @@ class FavoritesScreen extends StatelessWidget {
           }),
         ],
       ),
-      body: Stack(
-        children: [
-          Obx(() {
-            final favSongs = favoritesController.favoriteSongs;
+      body: Obx(() {
+        final favSongs = favoritesController.favoriteSongs;
 
-            if (favSongs.isEmpty) {
-              return Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      CupertinoIcons.heart,
-                      size: 64,
-                      color: theme.disabledColor,
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'No Favorites Yet',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: colorScheme.onSurface,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Tap the heart icon on any song to add it here.',
-                      style: TextStyle(
-                        color: colorScheme.onSurface.withValues(alpha: 0.6),
-                      ),
-                    ),
-                  ],
+        if (favSongs.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  CupertinoIcons.heart,
+                  size: 64,
+                  color: theme.disabledColor,
                 ),
-              );
-            }
-
-            return ListView.builder(
-              padding: const EdgeInsets.only(bottom: 120),
-              itemCount: favSongs.length,
-              itemBuilder: (context, index) {
-                final song = favSongs[index];
-                return SongTile(
-                  song: song,
-                  index: index,
-                  contextQueue: favSongs,
-                  onTap:
-                      () => audioController.playSong(
-                        song,
-                        contextQueue: favSongs,
-                      ),
-                );
-              },
-            );
-          }),
-
-          /// GLOBAL MINI PLAYER
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 15,
-            child: MiniPlayer(
-              onTap: () => _navigateToPlayer(context),
-              onSwipeUp: () => _navigateToPlayer(context),
+                const SizedBox(height: 16),
+                Text(
+                  'No Favorites Yet',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: colorScheme.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Tap the heart icon on any song to add it here.',
+                  style: TextStyle(
+                    color: colorScheme.onSurface.withValues(alpha: 0.6),
+                  ),
+                ),
+              ],
             ),
-          ),
-        ],
-      ),
+          );
+        }
+
+        return ListView.builder(
+          padding: const EdgeInsets.only(bottom: 120),
+          itemCount: favSongs.length,
+          itemBuilder: (context, index) {
+            final song = favSongs[index];
+            return SongTile(
+              song: song,
+              index: index,
+              contextQueue: favSongs,
+              onTap:
+                  () => audioController.playSong(
+                    song,
+                    contextQueue: favSongs,
+                  ),
+            );
+          },
+        );
+      }),
     );
   }
 }

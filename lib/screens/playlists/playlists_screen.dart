@@ -8,8 +8,6 @@ import '../../core/models/playlist_model.dart';
 import '../../widgets/song_tile.dart';
 import '../../widgets/ios_pop_over.dart';
 import '../../widgets/custom_scroll_animation.dart';
-import '../../widgets/miniplayer.dart';
-import '../../widgets/fullscreen_player.dart';
 import '../favorites/favorites_screen.dart';
 
 class PlaylistsScreen extends StatefulWidget {
@@ -554,25 +552,6 @@ class PlaylistDetailScreen extends StatelessWidget {
 
   const PlaylistDetailScreen({super.key, required this.playlist});
 
-  void _navigateToPlayer(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      enableDrag: true,
-      useSafeArea: false,
-      builder: (context) {
-        return ClipRRect(
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-          child: SizedBox(
-            height: MediaQuery.of(context).size.height * 0.94,
-            child: const FullScreenPlayer(),
-          ),
-        );
-      },
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -597,73 +576,58 @@ class PlaylistDetailScreen extends StatelessWidget {
           ),
         ],
       ),
-      body: Stack(
-        children: [
-          Obx(() {
-            final currentPlaylist = playlistController.playlists.firstWhere(
-              (p) => p.id == playlist.id,
-              orElse: () => playlist,
-            );
+      body: Obx(() {
+        final currentPlaylist = playlistController.playlists.firstWhere(
+          (p) => p.id == playlist.id,
+          orElse: () => playlist,
+        );
 
-            if (currentPlaylist.songs.isEmpty) {
-              return Center(
-                child: Text(
-                  'Playlist is empty',
-                  style: theme.textTheme.bodyMedium,
+        if (currentPlaylist.songs.isEmpty) {
+          return Center(
+            child: Text(
+              'Playlist is empty',
+              style: theme.textTheme.bodyMedium,
+            ),
+          );
+        }
+
+        return ListView.builder(
+          padding: const EdgeInsets.only(bottom: 120),
+          itemCount: currentPlaylist.songs.length,
+          itemBuilder: (context, index) {
+            final song = currentPlaylist.songs[index];
+            return Dismissible(
+              key: ValueKey('${song.id}_$index'),
+              direction: DismissDirection.endToStart,
+              background: Container(
+                color: theme.colorScheme.error,
+                alignment: Alignment.centerRight,
+                padding: const EdgeInsets.only(right: 20),
+                child: Icon(
+                  CupertinoIcons.trash,
+                  color: theme.colorScheme.onError,
                 ),
-              );
-            }
-
-            return ListView.builder(
-              padding: const EdgeInsets.only(bottom: 120),
-              itemCount: currentPlaylist.songs.length,
-              itemBuilder: (context, index) {
-                final song = currentPlaylist.songs[index];
-                return Dismissible(
-                  key: ValueKey('${song.id}_$index'),
-                  direction: DismissDirection.endToStart,
-                  background: Container(
-                    color: theme.colorScheme.error,
-                    alignment: Alignment.centerRight,
-                    padding: const EdgeInsets.only(right: 20),
-                    child: Icon(
-                      CupertinoIcons.trash,
-                      color: theme.colorScheme.onError,
-                    ),
-                  ),
-                  onDismissed: (_) {
-                    playlistController.removeSongFromPlaylist(
-                      playlist.id,
-                      song.id,
-                    );
-                  },
-                  child: SongTile(
-                    song: song,
-                    index: index,
-                    contextQueue: currentPlaylist.songs,
-                    onTap:
-                        () => audioController.playSong(
-                          song,
-                          contextQueue: currentPlaylist.songs,
-                        ),
-                  ),
+              ),
+              onDismissed: (_) {
+                playlistController.removeSongFromPlaylist(
+                  playlist.id,
+                  song.id,
                 );
               },
+              child: SongTile(
+                song: song,
+                index: index,
+                contextQueue: currentPlaylist.songs,
+                onTap:
+                    () => audioController.playSong(
+                      song,
+                      contextQueue: currentPlaylist.songs,
+                    ),
+              ),
             );
-          }),
-
-          /// GLOBAL MINI PLAYER
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 10,
-            child: MiniPlayer(
-              onTap: () => _navigateToPlayer(context),
-              onSwipeUp: () => _navigateToPlayer(context),
-            ),
-          ),
-        ],
-      ),
+          },
+        );
+      }),
     );
   }
 }

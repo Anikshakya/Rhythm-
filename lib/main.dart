@@ -11,6 +11,7 @@ import 'controllers/theme_controller.dart';
 import 'core/services/audio_handler.dart';
 import 'screens/home/home_screen.dart';
 import 'widgets/fullscreen_player.dart';
+import 'widgets/global_player_panel.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -74,6 +75,10 @@ class RhythmApp extends StatelessWidget {
         themeMode: themeController.themeMode.value,
         initialRoute: '/',
         defaultTransition: Transition.cupertino,
+        navigatorObservers: [GlobalRouteObserver()],
+        builder: (context, child) {
+          return GlobalPlayerPanel(child: child ?? const SizedBox.shrink());
+        },
         getPages: [
           GetPage(
             name: '/',

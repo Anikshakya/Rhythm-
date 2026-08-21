@@ -5,8 +5,6 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:melo/widgets/artwork_widget.dart';
-import 'package:melo/widgets/fullscreen_player.dart';
-import 'package:melo/widgets/miniplayer.dart';
 import '../../controllers/audio_controller.dart';
 import '../../core/models/song_model.dart';
 import '../../widgets/song_tile.dart';
@@ -82,25 +80,6 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
     // Force flag off before the navigator starts the reverse animation
     _allowHeavyUI.value = false;
     Navigator.of(context).pop();
-  }
-
-  void _navigateToPlayer(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      enableDrag: true,
-      useSafeArea: false,
-      builder: (context) {
-        return ClipRRect(
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-          child: SizedBox(
-            height: MediaQuery.of(context).size.height * 0.94,
-            child: const FullScreenPlayer(),
-          ),
-        );
-      },
-    );
   }
 
   // Helper method to format total album duration
@@ -605,17 +584,6 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
                   ],
                 ),
               ),
-            ),
-          ),
-
-          // Mini player
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 15,
-            child: MiniPlayer(
-              onTap: () => _navigateToPlayer(context),
-              onSwipeUp: () => _navigateToPlayer(context),
             ),
           ),
         ],

@@ -2,12 +2,13 @@ import 'dart:io';
 import 'dart:ui';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'library/library_screen.dart';
 import 'online/online_screen.dart';
 import 'playlists/playlists_screen.dart';
 import 'settings/settings_screen.dart';
-import '../widgets/miniplayer.dart';
 import '../widgets/fullscreen_player.dart';
+import '../widgets/global_player_panel.dart';
 
 class MainNavigation extends StatefulWidget {
   const MainNavigation({super.key});
@@ -44,22 +45,27 @@ class _MainNavigationState extends State<MainNavigation> {
   }
 
   void _navigateToPlayer() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      enableDrag: true,
-      useSafeArea: false,
-      builder: (context) {
-        return ClipRRect(
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-          child: SizedBox(
-            height: MediaQuery.of(context).size.height * 0.94,
-            child: const FullScreenPlayer(),
-          ),
-        );
-      },
-    );
+    try {
+      final panelController = Get.find<GlobalPlayerPanelController>();
+      panelController.expand();
+    } catch (_) {
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        enableDrag: true,
+        useSafeArea: false,
+        builder: (context) {
+          return ClipRRect(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+            child: SizedBox(
+              height: MediaQuery.of(context).size.height * 0.94,
+              child: const FullScreenPlayer(),
+            ),
+          );
+        },
+      );
+    }
   }
 
   @override
@@ -71,48 +77,51 @@ class _MainNavigationState extends State<MainNavigation> {
       const SettingsScreen(),
     ];
 
-    final bottomPadding = MediaQuery.of(context).padding.bottom;
-
     return Scaffold(
       extendBody: true,
-      body: Stack(
-        children: [
-          /// SWIPEABLE MAIN PAGES
-          PageView(
-            controller: _pageController,
-            physics: const BouncingScrollPhysics(),
-            onPageChanged: (index) {
-              setState(() => _selectedIndex = index);
-            },
-            children: screens,
-          ),
+      body: PageView(
+        controller: _pageController,
+        physics: const BouncingScrollPhysics(),
+        onPageChanged: (index) {
+          setState(() => _selectedIndex = index);
+        },
+        children: screens,
+      ),
+      bottomNavigationBar: Obx(() {
+        final panelController = Get.isRegistered<GlobalPlayerPanelController>()
+            ? Get.find<GlobalPlayerPanelController>()
+            : null;
+        final pos = panelController?.panelPosition.value ?? 0.0;
 
-          /// GLOBAL MINI PLAYER WITH SWIPE GESTURES
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: (!Platform.isIOS && MediaQuery.of(context).viewInsets.bottom > 0)
-                ? 10.0
-                : Platform.isIOS
-                    ? (bottomPadding > 0 ? bottomPadding * 2.2 + 4 : 6 * 2)
-                    : (bottomPadding > 0 ? bottomPadding * 2 : 58 + 10),
-            child: MiniPlayer(
-              onTap: _navigateToPlayer,
-              onSwipeUp: _navigateToPlayer,
+        return Transform.translate(
+          offset: Offset(0, pos * 120),
+          child: Opacity(
+            opacity: (1.0 - pos * 2.5).clamp(0.0, 1.0),
+            child: IgnorePointer(
+              ignoring: pos > 0.1,
+              child: CustomFloatingNavBar(
+                selectedIndex: _selectedIndex,
+                onTap: _onTabTapped,
+                items: const [
+                  NavBarItemData(
+                    icon: CupertinoIcons.music_albums,
+                    label: 'Library',
+                  ),
+                  NavBarItemData(icon: CupertinoIcons.globe, label: 'Online'),
+                  NavBarItemData(
+                    icon: CupertinoIcons.music_note_list,
+                    label: 'Playlists',
+                  ),
+                  NavBarItemData(
+                    icon: CupertinoIcons.settings,
+                    label: 'Settings',
+                  ),
+                ],
+              ),
             ),
-          )
-        ],
-      ),
-      bottomNavigationBar: CustomFloatingNavBar(
-        selectedIndex: _selectedIndex,
-        onTap: _onTabTapped,
-        items: const [
-          NavBarItemData(icon: CupertinoIcons.music_albums, label: 'Library'),
-          NavBarItemData(icon: CupertinoIcons.globe, label: 'Online'),
-          NavBarItemData(icon: CupertinoIcons.music_note_list, label: 'Playlists'),
-          NavBarItemData(icon: CupertinoIcons.settings, label: 'Settings'),
-        ],
-      ),
+          ),
+        );
+      }),
     );
   }
 }
