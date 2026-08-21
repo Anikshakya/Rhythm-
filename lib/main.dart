@@ -122,14 +122,7 @@ class RhythmApp extends StatelessWidget {
           return ValueListenableBuilder<double>(
             valueListenable: GlobalPlayerPage.progressNotifier,
             builder: (context, progress, _) {
-              return PopScope(
-                canPop: progress <= 0.001,
-                onPopInvokedWithResult: (didPop, result) {
-                  if (!didPop && progress > 0.001) {
-                    GlobalPlayerPage.collapseCallback?.call();
-                  }
-                },
-                child: Overlay(
+              return Overlay(
                   key: globalOverlayKey,
                   initialEntries: [
                     OverlayEntry(
@@ -143,8 +136,7 @@ class RhythmApp extends StatelessWidget {
                       },
                     ),
                   ],
-                ),
-              );
+                );
             },
           );
         },

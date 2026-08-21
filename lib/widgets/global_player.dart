@@ -171,37 +171,50 @@ class _GlobalPlayerPageState extends State<GlobalPlayerPage>
 
     final audioController = Get.find<AudioController>();
 
-    return Obx(() {
-      final song = audioController.currentSong.value;
+    return ValueListenableBuilder<double>(
+      valueListenable: GlobalPlayerPage.progressNotifier,
+      builder: (context, playerProgress, child) {
+        return PopScope(
+          canPop: playerProgress <= 0.001,
+          onPopInvokedWithResult: (didPop, result) {
+            if (!didPop && playerProgress > 0.001) {
+              collapse();
+            }
+          },
+          child: Obx(() {
+            final song = audioController.currentSong.value;
 
-      if (song == null) {
-        return const SizedBox.shrink();
-      }
+            if (song == null) {
+              return const SizedBox.shrink();
+            }
 
-      return ValueListenableBuilder<double?>(
-        valueListenable: GlobalPlayerPage.miniPlayerBottomNotifier,
-        builder: (context, miniPlayerBottom, child) {
-          return ValueListenableBuilder<bool>(
-            valueListenable: GlobalPlayerPage.bottomNavVisibleNotifier,
-            builder: (context, bottomNavVisible, child) {
-              return AnimatedBuilder(
-                animation: _controller,
-                builder: (context, child) {
-                  return _buildPlayer(
-                    context,
-                    size,
-                    bottomNavVisible
-                        ? (miniPlayerBottom ?? bottomSafeArea)
-                        : bottomSafeArea,
-                    _controller.value,
-                  );
-                },
-              );
-            },
-          );
-        },
-      );
-    });
+            return ValueListenableBuilder<double?>(
+              valueListenable: GlobalPlayerPage.miniPlayerBottomNotifier,
+              builder: (context, miniPlayerBottom, child) {
+                return ValueListenableBuilder<bool>(
+                  valueListenable: GlobalPlayerPage.bottomNavVisibleNotifier,
+                  builder: (context, bottomNavVisible, child) {
+                    return AnimatedBuilder(
+                      animation: _controller,
+                      builder: (context, child) {
+                        return _buildPlayer(
+                          context,
+                          size,
+                          bottomNavVisible
+                              ? (miniPlayerBottom ?? bottomSafeArea)
+                              : bottomSafeArea,
+                          _controller.value,
+                        );
+                      },
+                    );
+                  },
+                );
+              },
+            );
+          }),
+        );
+      },
+    );
   }
 
   // ============================================================

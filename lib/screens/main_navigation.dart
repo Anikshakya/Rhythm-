@@ -118,10 +118,20 @@ class _MainNavigationState extends State<MainNavigation> with RouteAware {
       const SettingsScreen(),
     ];
 
-    return Scaffold(
-      extendBody: true,
+    return ValueListenableBuilder<double>(
+      valueListenable: GlobalPlayerPage.progressNotifier,
+      builder: (context, playerProgress, child) {
+        return PopScope(
+          canPop: playerProgress <= 0.001,
+          onPopInvokedWithResult: (didPop, result) {
+            if (!didPop && playerProgress > 0.001) {
+              GlobalPlayerPage.collapseCallback?.call();
+            }
+          },
+          child: Scaffold(
+            extendBody: true,
 
-      body: PageView(
+            body: PageView(
         controller: _pageController,
         physics: const BouncingScrollPhysics(),
         onPageChanged: (index) {
@@ -132,9 +142,9 @@ class _MainNavigationState extends State<MainNavigation> with RouteAware {
           }
         },
         children: screens,
-      ),
+        ),
 
-      bottomNavigationBar: ValueListenableBuilder<double>(
+        bottomNavigationBar: ValueListenableBuilder<double>(
         valueListenable: GlobalPlayerPage.progressNotifier,
         builder: (context, playerProgress, child) {
           return Transform.translate(
@@ -159,7 +169,10 @@ class _MainNavigationState extends State<MainNavigation> with RouteAware {
             ],
           ),
         ),
-      ),
+            ),
+          ),
+        );
+      },
     );
   }
 }
