@@ -221,7 +221,31 @@ class MiniPlayer extends StatelessWidget {
         return GestureDetector(
           onTap: onTap,
           behavior: HitTestBehavior.opaque,
-          child: content,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(30),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
+              child: Container(
+                height: 58,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color:
+                      isDark
+                          ? Colors.white.withValues(alpha: 0.08)
+                          : Colors.black.withValues(alpha: 0.05),
+                  borderRadius: BorderRadius.circular(30),
+                  border: Border.all(
+                    color:
+                        isDark
+                            ? Colors.white.withValues(alpha: 0.12)
+                            : Colors.black.withValues(alpha: 0.06),
+                    width: 0.5,
+                  ),
+                ),
+                child: content,
+              ),
+            ),
+          ),
         );
       }
 

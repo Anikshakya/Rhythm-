@@ -52,7 +52,7 @@ class _MainNavigationState extends State<MainNavigation> with RouteAware {
             ? (bottomInset > 0 ? bottomInset * 0.50 : 6.0)
             : (bottomInset > 0 ? bottomInset * 0.24 : 6.0);
 
-    GlobalPlayerPage.miniPlayerBottomNotifier.value = bottomMargin + 58 + 10;
+    GlobalPlayerPage.miniPlayerBottomNotifier.value = bottomMargin + 58 + 4;
     GlobalPlayerPage.bottomNavVisibleNotifier.value = true;
   }
 

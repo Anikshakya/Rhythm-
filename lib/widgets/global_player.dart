@@ -214,21 +214,21 @@ class _GlobalPlayerPageState extends State<GlobalPlayerPage>
     double bottomSafeArea,
     double progress,
   ) {
-    const double miniHeight = 64;
+    const double miniHeight = 58;
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final collapsedBottom = bottomSafeArea;
 
-    final left = lerpDouble(12, 0, progress)!;
+    final left = lerpDouble(20, 0, progress)!;
 
-    final right = lerpDouble(12, 0, progress)!;
+    final right = lerpDouble(20, 0, progress)!;
 
     final bottom = lerpDouble(collapsedBottom, 0, progress)!;
 
     final height = lerpDouble(miniHeight, screenSize.height, progress)!;
 
-    final radius = lerpDouble(28, 0, progress)!;
+    final radius = lerpDouble(30, 0, progress)!;
 
     return Positioned(
       left: left,
@@ -332,7 +332,7 @@ class _GlobalPlayerPageState extends State<GlobalPlayerPage>
                 left: 0,
                 right: 0,
                 top: 0,
-                height: 64,
+                height: 58,
 
                 child: Opacity(
                   opacity: (1 - progress * 4).clamp(0.0, 1.0),
