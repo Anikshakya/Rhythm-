@@ -176,7 +176,10 @@ class _FullScreenPlayerState extends State<FullScreenPlayer>
                             final panelController = Get.find<GlobalPlayerPanelController>();
                             panelController.collapse();
                           } catch (_) {
-                            Navigator.of(context).pop();
+                            final targetCtx = Get.context ?? context;
+                            if (Navigator.of(targetCtx).canPop()) {
+                              Navigator.of(targetCtx).pop();
+                            }
                           }
                         },
                       ),
@@ -197,7 +200,9 @@ class _FullScreenPlayerState extends State<FullScreenPlayer>
                               if (currentSong == null) return;
                               final libraryController = Get.find<LibraryController>();
                               final albumSongs = libraryController.albums[currentSong.album] ?? [currentSong];
-                              Navigator.pop(context);
+                              try {
+                                Get.find<GlobalPlayerPanelController>().collapse();
+                              } catch (_) {}
                               Get.to(
                                 () => AlbumDetailScreen(
                                   key: ValueKey('album_${currentSong.album}'),
@@ -348,7 +353,9 @@ class _FullScreenPlayerState extends State<FullScreenPlayer>
                                         libraryController.artists[currentSong
                                             .artist] ??
                                         [currentSong];
-                                    Navigator.pop(context);
+                                    try {
+                                      Get.find<GlobalPlayerPanelController>().collapse();
+                                    } catch (_) {}
                                     Get.to(
                                       () => ArtistDetailScreen(
                                         key: ValueKey(
@@ -539,7 +546,7 @@ class _FullScreenPlayerState extends State<FullScreenPlayer>
                         return GestureDetector(
                           onTap:
                               () => showIosSpeedDialog(
-                                context,
+                                Get.context ?? context,
                                 audioController,
                                 primaryColor,
                               ),
@@ -586,7 +593,7 @@ class _FullScreenPlayerState extends State<FullScreenPlayer>
                         return GestureDetector(
                           onTap:
                               () => showIosSleepTimerDialog(
-                                context,
+                                Get.context ?? context,
                                 audioController,
                                 primaryColor,
                               ),
@@ -639,7 +646,7 @@ class _FullScreenPlayerState extends State<FullScreenPlayer>
                         ),
                         onPressed:
                             () => showModalBottomSheet(
-                              context: context,
+                              context: Get.context ?? context,
                               isScrollControlled: true,
                               backgroundColor: Colors.transparent,
                               builder: (_) => const QueueSheet(),
@@ -1295,7 +1302,7 @@ class _QueueSheetState extends State<QueueSheet> {
         onTap: () {
           HapticFeedback.lightImpact();
           showModalBottomSheet(
-            context: context,
+            context: Get.context ?? context,
             isScrollControlled: true,
             backgroundColor: Colors.transparent,
             builder: (_) => const AddSongsSheet(),

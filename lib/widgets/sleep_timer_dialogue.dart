@@ -4,6 +4,7 @@ import 'package:melo/widgets/ios_pop_over.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:get/get.dart';
 
 void showIosSleepTimerDialog(
   BuildContext context,
@@ -92,7 +93,7 @@ void _showCustomTimerPicker(
   Duration selectedDuration = const Duration(minutes: 20);
 
   showCupertinoModalPopup<void>(
-    context: context,
+    context: Get.context ?? context,
     barrierColor: Colors.black.withValues(alpha: 0.4),
     builder: (BuildContext context) {
       final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -130,7 +131,12 @@ void _showCustomTimerPicker(
                         children: [
                           CupertinoButton(
                             padding: EdgeInsets.zero,
-                            onPressed: () => Navigator.of(context).pop(),
+                            onPressed: () {
+                              final targetCtx = Get.context ?? context;
+                              if (Navigator.of(targetCtx).canPop()) {
+                                Navigator.of(targetCtx).pop();
+                              }
+                            },
                             child: const Text(
                               'Cancel',
                               style: TextStyle(
@@ -153,7 +159,10 @@ void _showCustomTimerPicker(
                               if (selectedDuration.inSeconds > 0) {
                                 controller.setSleepTimer(selectedDuration);
                               }
-                              Navigator.of(context).pop();
+                              final targetCtx = Get.context ?? context;
+                              if (Navigator.of(targetCtx).canPop()) {
+                                Navigator.of(targetCtx).pop();
+                              }
                             },
                             child: Text(
                               'Set',
