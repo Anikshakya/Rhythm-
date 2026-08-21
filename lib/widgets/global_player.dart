@@ -317,7 +317,7 @@ class _GlobalPlayerPageState extends State<GlobalPlayerPage>
                   minHeight: screenSize.height,
                   maxHeight: screenSize.height,
 
-                  child: const FullScreenPlayer(),
+                  child: FullScreenPlayer(onDismiss: collapse),
                 ),
               ),
             ),
@@ -353,7 +353,7 @@ class _GlobalPlayerPageState extends State<GlobalPlayerPage>
             // ==================================================
             if (progress > 0.75)
               Positioned(
-                top: 8,
+                top: MediaQuery.paddingOf(context).top + 8,
                 left: 0,
                 right: 0,
 

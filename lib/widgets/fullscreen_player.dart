@@ -21,7 +21,9 @@ import '../core/models/song_model.dart';
 import 'artwork_widget.dart';
 
 class FullScreenPlayer extends StatefulWidget {
-  const FullScreenPlayer({super.key});
+  final VoidCallback? onDismiss;
+
+  const FullScreenPlayer({super.key, this.onDismiss});
 
   @override
   State<FullScreenPlayer> createState() => _FullScreenPlayerState();
@@ -201,9 +203,7 @@ class _FullScreenPlayerState extends State<FullScreenPlayer>
                           color: isDark ? Colors.white70 : Colors.black87,
                         ),
                         onPressed: () {
-                          if (Navigator.of(context).canPop()) {
-                            Navigator.of(context).pop();
-                          }
+                          widget.onDismiss?.call();
                         },
                       ),
 
