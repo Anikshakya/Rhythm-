@@ -3,13 +3,12 @@ import 'dart:ui';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
+import 'package:visibility_detector/visibility_detector.dart';
 
 import 'library/library_screen.dart';
 import 'online/online_screen.dart';
 import 'playlists/playlists_screen.dart';
 import 'settings/settings_screen.dart';
-import '../widgets/fullscreen_player.dart';
 import '../widgets/global_player.dart';
 
 class MainNavigation extends StatefulWidget {
@@ -19,9 +18,10 @@ class MainNavigation extends StatefulWidget {
   State<MainNavigation> createState() => _MainNavigationState();
 }
 
-class _MainNavigationState extends State<MainNavigation> {
+class _MainNavigationState extends State<MainNavigation> with RouteAware {
   int _selectedIndex = 0;
   late final PageController _pageController;
+  bool _isRouteActive = true;
 
   @override
   void initState() {
@@ -31,7 +31,60 @@ class _MainNavigationState extends State<MainNavigation> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    final route = ModalRoute.of(context);
+    if (route is PageRoute<dynamic>) {
+      _isRouteActive = route.isCurrent;
+      routeObserver.subscribe(this, route);
+    }
+
+    if (_isRouteActive) {
+      _publishMiniPlayerOffset();
+    }
+  }
+
+  void _publishMiniPlayerOffset() {
+    final bottomInset = MediaQuery.of(context).padding.bottom;
+    final bottomMargin =
+        Platform.isIOS
+            ? (bottomInset > 0 ? bottomInset * 0.50 : 6.0)
+            : (bottomInset > 0 ? bottomInset * 0.24 : 6.0);
+
+    GlobalPlayerPage.miniPlayerBottomNotifier.value = bottomMargin + 58 + 10;
+    GlobalPlayerPage.bottomNavVisibleNotifier.value = true;
+  }
+
+  void _onBottomNavVisibilityChanged(VisibilityInfo info) {
+    if (GlobalPlayerPage.progressNotifier.value > 0.01) {
+      return;
+    }
+
+    final isVisible = _isRouteActive && info.visibleFraction > 0.1;
+    GlobalPlayerPage.bottomNavVisibleNotifier.value = isVisible;
+
+    if (isVisible) {
+      _publishMiniPlayerOffset();
+    }
+  }
+
+  @override
+  void didPushNext() {
+    _isRouteActive = false;
+    GlobalPlayerPage.bottomNavVisibleNotifier.value = false;
+  }
+
+  @override
+  void didPopNext() {
+    _isRouteActive = true;
+    _publishMiniPlayerOffset();
+  }
+
+  @override
   void dispose() {
+    routeObserver.unsubscribe(this);
+    GlobalPlayerPage.bottomNavVisibleNotifier.value = false;
     _pageController.dispose();
     super.dispose();
   }
@@ -52,14 +105,8 @@ class _MainNavigationState extends State<MainNavigation> {
 
   /// Opens the full-screen player directly.
   ///
-  /// No GlobalPlayerPanelController is required anymore.
   void _navigateToPlayer() {
-    Get.to(
-      () => const FullScreenPlayer(),
-      transition: Transition.downToUp,
-      duration: const Duration(milliseconds: 350),
-      fullscreenDialog: true,
-    );
+    GlobalPlayerPage.openCallback?.call();
   }
 
   @override
@@ -95,18 +142,22 @@ class _MainNavigationState extends State<MainNavigation> {
             child: child,
           );
         },
-        child: CustomFloatingNavBar(
-          selectedIndex: _selectedIndex,
-          onTap: _onTabTapped,
-          items: const [
-            NavBarItemData(icon: CupertinoIcons.music_albums, label: 'Library'),
-            NavBarItemData(icon: CupertinoIcons.globe, label: 'Online'),
-            NavBarItemData(
-              icon: CupertinoIcons.music_note_list,
-              label: 'Playlists',
-            ),
-            NavBarItemData(icon: CupertinoIcons.settings, label: 'Settings'),
-          ],
+        child: VisibilityDetector(
+          key: const Key('main-bottom-navigation'),
+          onVisibilityChanged: _onBottomNavVisibilityChanged,
+          child: CustomFloatingNavBar(
+            selectedIndex: _selectedIndex,
+            onTap: _onTabTapped,
+            items: const [
+              NavBarItemData(icon: CupertinoIcons.music_albums, label: 'Library'),
+              NavBarItemData(icon: CupertinoIcons.globe, label: 'Online'),
+              NavBarItemData(
+                icon: CupertinoIcons.music_note_list,
+                label: 'Playlists',
+              ),
+              NavBarItemData(icon: CupertinoIcons.settings, label: 'Settings'),
+            ],
+          ),
         ),
       ),
     );

@@ -7,12 +7,21 @@ import '../controllers/audio_controller.dart';
 import 'fullscreen_player.dart';
 import 'miniplayer.dart';
 
+final RouteObserver<PageRoute<dynamic>> routeObserver =
+  RouteObserver<PageRoute<dynamic>>();
+
 class GlobalPlayerPage extends StatefulWidget {
   const GlobalPlayerPage({super.key});
 
   static final ValueNotifier<double> progressNotifier = ValueNotifier<double>(
     0.0,
   );
+  static final ValueNotifier<double?> miniPlayerBottomNotifier =
+      ValueNotifier<double?>(null);
+    static final ValueNotifier<bool> bottomNavVisibleNotifier =
+      ValueNotifier<bool>(false);
+  static VoidCallback? collapseCallback;
+    static VoidCallback? openCallback;
 
   @override
   State<GlobalPlayerPage> createState() => _GlobalPlayerPageState();
@@ -21,6 +30,7 @@ class GlobalPlayerPage extends StatefulWidget {
 class _GlobalPlayerPageState extends State<GlobalPlayerPage>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
+  late final Worker _playerOpenWorker;
 
   bool _isDragging = false;
 
@@ -37,10 +47,21 @@ class _GlobalPlayerPageState extends State<GlobalPlayerPage>
     );
 
     _controller.addListener(_publishProgress);
+    GlobalPlayerPage.collapseCallback = collapse;
+
+    final audioController = Get.find<AudioController>();
+    _playerOpenWorker = ever<int>(
+      audioController.playerOpenRequest,
+      (_) => expand(),
+    );
+    GlobalPlayerPage.openCallback = expand;
   }
 
   @override
   void dispose() {
+    GlobalPlayerPage.collapseCallback = null;
+    GlobalPlayerPage.openCallback = null;
+    _playerOpenWorker.dispose();
     _controller.removeListener(_publishProgress);
     _controller.dispose();
     super.dispose();
@@ -157,10 +178,27 @@ class _GlobalPlayerPageState extends State<GlobalPlayerPage>
         return const SizedBox.shrink();
       }
 
-      return AnimatedBuilder(
-        animation: _controller,
-        builder: (context, child) {
-          return _buildPlayer(context, size, bottomSafeArea, _controller.value);
+      return ValueListenableBuilder<double?>(
+        valueListenable: GlobalPlayerPage.miniPlayerBottomNotifier,
+        builder: (context, miniPlayerBottom, child) {
+          return ValueListenableBuilder<bool>(
+            valueListenable: GlobalPlayerPage.bottomNavVisibleNotifier,
+            builder: (context, bottomNavVisible, child) {
+              return AnimatedBuilder(
+                animation: _controller,
+                builder: (context, child) {
+                  return _buildPlayer(
+                    context,
+                    size,
+                    bottomNavVisible
+                        ? (miniPlayerBottom ?? bottomSafeArea)
+                        : bottomSafeArea,
+                    _controller.value,
+                  );
+                },
+              );
+            },
+          );
         },
       );
     });
@@ -180,7 +218,7 @@ class _GlobalPlayerPageState extends State<GlobalPlayerPage>
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    final collapsedBottom = bottomSafeArea > 0 ? bottomSafeArea + 64 : 70;
+    final collapsedBottom = bottomSafeArea;
 
     final left = lerpDouble(12, 0, progress)!;
 
@@ -227,10 +265,16 @@ class _GlobalPlayerPageState extends State<GlobalPlayerPage>
               progress,
             )!;
 
-    return Material(
-      color: Colors.transparent,
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onVerticalDragStart: _onDragStart,
+      onVerticalDragUpdate: _onDragUpdate,
+      onVerticalDragEnd: _onDragEnd,
+      onVerticalDragCancel: _onDragCancel,
+      child: Material(
+        color: Colors.transparent,
 
-      child: Container(
+        child: Container(
         width: double.infinity,
         height: double.infinity,
 
@@ -254,7 +298,7 @@ class _GlobalPlayerPageState extends State<GlobalPlayerPage>
           ],
         ),
 
-        child: Stack(
+          child: Stack(
           clipBehavior: Clip.none,
           children: [
             // ==================================================
@@ -293,70 +337,14 @@ class _GlobalPlayerPageState extends State<GlobalPlayerPage>
                 child: Opacity(
                   opacity: (1 - progress * 4).clamp(0.0, 1.0),
 
-                  child: MiniPlayer(showDecoration: false, onTap: expand),
-                ),
-              ),
-
-            // ==================================================
-            // MINI PLAYER DRAG LAYER
-            //
-            // THIS IS THE IMPORTANT PART.
-            //
-            // It sits ABOVE MiniPlayer and captures ONLY
-            // vertical gestures.
-            //
-            // Therefore dragging from ANYWHERE on the mini
-            // player works.
-            // ==================================================
-            if (progress < 0.95)
-              Positioned(
-                left: 0,
-                right: 0,
-                top: 0,
-                height: 64,
-
-                child: GestureDetector(
-                  behavior: HitTestBehavior.translucent,
-
-                  onVerticalDragStart: _onDragStart,
-
-                  onVerticalDragUpdate: _onDragUpdate,
-
-                  onVerticalDragEnd: _onDragEnd,
-
-                  onVerticalDragCancel: _onDragCancel,
-
-                  // Tap also opens fullscreen.
-                  onTap: expand,
-
-                  child: const SizedBox.expand(),
-                ),
-              ),
-
-            // ==================================================
-            // FULLSCREEN DRAG AREA
-            //
-            // Only active after the player has started opening.
-            // ==================================================
-            if (progress >= 0.05)
-              Positioned(
-                left: 0,
-                right: 0,
-                top: 0,
-                height: 80,
-
-                child: GestureDetector(
-                  behavior: HitTestBehavior.translucent,
-
-                  onVerticalDragStart: _onDragStart,
-
-                  onVerticalDragUpdate: _onDragUpdate,
-
-                  onVerticalDragEnd: _onDragEnd,
-
-                  onVerticalDragCancel: _onDragCancel,
-
-                  child: const SizedBox.expand(),
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onVerticalDragStart: _onDragStart,
+                    onVerticalDragUpdate: _onDragUpdate,
+                    onVerticalDragEnd: _onDragEnd,
+                    onVerticalDragCancel: _onDragCancel,
+                    child: MiniPlayer(showDecoration: false, onTap: expand),
+                  ),
                 ),
               ),
 
@@ -388,6 +376,7 @@ class _GlobalPlayerPageState extends State<GlobalPlayerPage>
                 ),
               ),
           ],
+          ),
         ),
       ),
     );

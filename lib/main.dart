@@ -95,6 +95,12 @@ class RhythmApp extends StatelessWidget {
         initialRoute: '/',
 
         defaultTransition: Transition.cupertino,
+        navigatorObservers: [routeObserver],
+        routingCallback: (routing) {
+          if (routing != null && routing.current != '/') {
+            GlobalPlayerPage.bottomNavVisibleNotifier.value = false;
+          }
+        },
 
         getPages: [
           // ====================================================
@@ -113,29 +119,33 @@ class RhythmApp extends StatelessWidget {
         // GLOBAL APP LAYER
         // ======================================================
         builder: (context, child) {
-          return Overlay(
-            key: globalOverlayKey,
-            initialEntries: [
-              // ==========================================================
-              // APP / NAVIGATOR
-              // ==========================================================
-              OverlayEntry(
-                builder: (context) {
-                  return child ?? const SizedBox.shrink();
+          return ValueListenableBuilder<double>(
+            valueListenable: GlobalPlayerPage.progressNotifier,
+            builder: (context, progress, _) {
+              return PopScope(
+                canPop: progress <= 0.001,
+                onPopInvokedWithResult: (didPop, result) {
+                  if (!didPop && progress > 0.001) {
+                    GlobalPlayerPage.collapseCallback?.call();
+                  }
                 },
-              ),
-
-              // ==========================================================
-              // GLOBAL PLAYER
-              //
-              // This is above every Navigator route.
-              // ==========================================================
-              OverlayEntry(
-                builder: (context) {
-                  return const GlobalPlayerPage();
-                },
-              ),
-            ],
+                child: Overlay(
+                  key: globalOverlayKey,
+                  initialEntries: [
+                    OverlayEntry(
+                      builder: (context) {
+                        return child ?? const SizedBox.shrink();
+                      },
+                    ),
+                    OverlayEntry(
+                      builder: (context) {
+                        return const GlobalPlayerPage();
+                      },
+                    ),
+                  ],
+                ),
+              );
+            },
           );
         },
       ),

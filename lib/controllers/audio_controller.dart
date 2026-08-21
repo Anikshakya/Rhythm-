@@ -20,6 +20,7 @@ class AudioController extends GetxController {
   final RxDouble speed = 1.0.obs;
   final RxBool autoplayEnabled = true.obs;
   final RxList<Song> autoplayQueue = <Song>[].obs;
+  final RxInt playerOpenRequest = 0.obs;
 
   /// Remaining sleep time. `null` = timer off.
   /// Updated every second while active.
@@ -101,6 +102,8 @@ class AudioController extends GetxController {
       _handler.setQueue(songs, initialIndex: initialIndex);
 
   Future<void> playSong(Song song, {List<Song>? contextQueue}) async {
+    playerOpenRequest.value++;
+
     if (currentSong.value?.id == song.id) {
       if (!playing.value) {
         await play();

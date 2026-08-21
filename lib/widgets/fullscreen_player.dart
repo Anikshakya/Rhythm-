@@ -102,35 +102,12 @@ class _FullScreenPlayerState extends State<FullScreenPlayer>
         }
       }
 
-      /*
-       * IMPORTANT
-       *
-       * The Overlay is intentionally ABOVE the Scaffold.
-       *
-       * This means:
-       *
-       * FullScreenPlayer
-       *     └── Overlay
-       *           └── Scaffold
-       *                 └── page content
-       *
-       * Therefore every button/context inside this page has
-       * a guaranteed Overlay ancestor.
-       */
-      return Overlay(
-        initialEntries: [
-          OverlayEntry(
-            builder: (overlayContext) {
-              return _buildPlayerScaffold(
-                overlayContext,
-                audioController,
-                favoritesController,
-                currentSong,
-                isPlaying,
-              );
-            },
-          ),
-        ],
+      return _buildPlayerScaffold(
+        context,
+        audioController,
+        favoritesController,
+        currentSong,
+        isPlaying,
       );
     });
   }
